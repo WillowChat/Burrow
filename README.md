@@ -11,7 +11,8 @@ This project is almost brand new. It's unlikely to be production-ready until ver
  * Send some messages
 * Track performance regressions
 * Fuzzing
-* Reloadable SSL (AF_LOCAL socket to SSL terminator instead?)
+* Reloadable TLS (AF_LOCAL socket to SSL terminator instead?)
+* Integrated and synced services (SASL only?)
 * Experiment with:
  * Redundant linking
  * Non-IRC S2S (protobuf?)
