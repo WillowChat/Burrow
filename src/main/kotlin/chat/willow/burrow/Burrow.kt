@@ -33,8 +33,8 @@ object Burrow {
     class Server : ILineAccumulatorDelegate {
 
         companion object {
-            val BUFFER_SIZE = 32
-            val MAX_LINE_LENGTH = 4096
+            val BUFFER_SIZE = 4096
+            val MAX_LINE_LENGTH = BUFFER_SIZE
             val UTF_8: Charset = Charset.forName("UTF-8")
             val NEXT_CLIENT_ID = AtomicInteger(0)
         }
