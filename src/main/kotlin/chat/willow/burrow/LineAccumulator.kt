@@ -2,20 +2,23 @@ package chat.willow.burrow
 
 import java.nio.ByteBuffer
 
+val NEW_LINE_BYTE = '\n'.toByte()
+val CARRIAGE_RETURN_BYTE = '\r'.toByte()
+
 interface ILineAccumulator {
 
     fun add(bytes: ByteArray, bytesRead: Int)
 
 }
 
-interface ILineAccumulatorDelegate {
+interface ILineAccumulatorListener {
 
-    fun onLineAccumulated(connectionId: Int, line: String)
-    fun onBufferOverran(connectionId: Int)
+    fun onLineAccumulated(id: Int, line: String)
+    fun onBufferOverran(id: Int)
 
 }
 
-class LineAccumulator(private val bufferSize: Int, private val connectionId: Int, private val delegate: ILineAccumulatorDelegate): ILineAccumulator {
+class LineAccumulator(private val bufferSize: Int, private val connectionId: Int, private val listener: ILineAccumulatorListener): ILineAccumulator {
 
     private val buffer: ByteBuffer = ByteBuffer.allocate(bufferSize)
 
@@ -37,10 +40,10 @@ class LineAccumulator(private val bufferSize: Int, private val connectionId: Int
             }
 
             if (newLinePosition >= startPosition) {
-                // new line found, is there space for it in the buffer?
+                // new line found, is there space for it in the incomingBuffer?
                 if (buffer.position() + newLinePosition - startPosition >= bufferSize) {
                     buffer.clear()
-                    delegate.onBufferOverran(connectionId)
+                    listener.onBufferOverran(connectionId)
                     return
                 }
 
@@ -56,7 +59,7 @@ class LineAccumulator(private val bufferSize: Int, private val connectionId: Int
                 val line = String(bytes = buffer.array(), charset = Burrow.Server.UTF_8, offset = 0, length = buffer.position())
                 buffer.clear()
 
-                delegate.onLineAccumulated(connectionId, line)
+                listener.onLineAccumulated(connectionId, line)
 
                 startPosition = newLinePosition + 1
 
@@ -64,12 +67,12 @@ class LineAccumulator(private val bufferSize: Int, private val connectionId: Int
                     return
                 }
             } else {
-                // no newline, try to put all of the bytes on the buffer, check for size limit
+                // no newline, try to put all of the bytes on the incomingBuffer, check for size limit
 
                 val bytesRemaining = endPosition - startPosition
                 if (bytesRemaining + buffer.position() >= bufferSize) {
                     buffer.clear()
-                    delegate.onBufferOverran(connectionId)
+                    listener.onBufferOverran(connectionId)
                     return
                 }
 

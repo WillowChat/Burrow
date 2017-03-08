@@ -1,21 +1,10 @@
 package chat.willow.burrow
 
-import chat.willow.burrow.helper.loggerFor
+import chat.willow.burrow.helper.*
 import chat.willow.kale.irc.message.IrcMessageParser
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
-import java.nio.channels.SelectionKey
-import java.nio.channels.SelectionKey.OP_READ
-import java.nio.channels.Selector
-import java.nio.channels.ServerSocketChannel
-import java.nio.channels.SocketChannel
 import java.nio.charset.Charset
-import java.util.concurrent.atomic.AtomicInteger
-
-val NEW_LINE_BYTE = '\n'.toByte()
-val CARRIAGE_RETURN_BYTE = '\r'.toByte()
-
-data class BurrowConnection(val id: Int, val socket: SocketChannel, val buffer: ByteBuffer, val accumulator: ILineAccumulator)
 
 object Burrow {
 
@@ -24,114 +13,113 @@ object Burrow {
     @JvmStatic fun main(args: Array<String>) {
         LOGGER.info("starting server...")
 
-        val server = Server()
+        val lineAccumulatorPool = LineAccumulatorPool(bufferSize = Burrow.Server.MAX_LINE_LENGTH)
+        val clientTracker = ClientTracker(lineAccumulatorPool)
+
+        val selectorFactory = SelectorFactory
+        val nioWrapper = NIOWrapper(selectorFactory)
+        val socketProcessorFactory = SocketProcessorFactory
+        val server = Server(nioWrapper, socketProcessorFactory, clientTracker)
+
         server.start()
 
         LOGGER.info("server ended")
     }
 
-    class Server : ILineAccumulatorDelegate {
+    class Server(private val nioWrapper: INIOWrapper, private val socketProcessorFactory: ISocketProcessorFactory, private val clientTracker: IClientTracker) : ISocketProcessorDelegate, ILineAccumulatorListener {
 
         companion object {
             val BUFFER_SIZE = 4096
             val MAX_LINE_LENGTH = BUFFER_SIZE
             val UTF_8: Charset = Charset.forName("UTF-8")
-            val NEXT_CLIENT_ID = AtomicInteger(0)
         }
-
-        val clients = mutableMapOf<Int, BurrowConnection>()
 
         fun start() {
-            val selector = Selector.open()
+            val socketAddress = InetSocketAddress("0.0.0.0", 6667)
+            nioWrapper.setUp(socketAddress)
 
-            val socket = ServerSocketChannel.open()
-            val address = InetSocketAddress("0.0.0.0", 6667)
-            socket.bind(address)
-            socket.configureBlocking(false)
-
-            val ops = socket.validOps()
-            val selectorKey = socket.register(selector, ops)
-
-            while (true) {
-                selector.select()
-
-                val keys = selector.selectedKeys()
-                val iterator = keys.iterator()
-
-                while (iterator.hasNext()) {
-                    val key = iterator.next()
-
-                    if (key.isAcceptable) {
-                        accept(selector, key)
-                    } else if (key.isReadable) {
-                        read(key)
-                    }
-                }
-
-                iterator.remove()
-            }
+            val socketProcessor = socketProcessorFactory.create(nioWrapper, buffer = ByteBuffer.allocate(MAX_LINE_LENGTH), delegate = this, interruptedChecker = ThreadInterruptedChecker)
+            socketProcessor.run()
         }
 
-        private fun accept(selector: Selector, key: SelectionKey) {
-            val serverChannel = key.channel() as? ServerSocketChannel ?: return
-            val client = serverChannel.accept()
+        // ISocketProcessorDelegate
 
-            client.configureBlocking(false)
+        override fun onAccepted(socket: INIOSocketChannelWrapper): ClientId {
+            val client = clientTracker.track(socket, listener = this)
 
-            val nextClientId = NEXT_CLIENT_ID.incrementAndGet()
+            LOGGER.info("accepted connection $client")
 
-            val accumulator = LineAccumulator(bufferSize = MAX_LINE_LENGTH, delegate = this, connectionId = nextClientId)
-            val info = BurrowConnection(nextClientId, socket = client, buffer = ByteBuffer.allocate(BUFFER_SIZE), accumulator = accumulator)
-            val newClientKey = client.register(selector, OP_READ)
-            newClientKey.attach(nextClientId)
-
-            clients[nextClientId] = info
-
-            LOGGER.info("accepted connection ${info.id}: $client")
+            return client.id
         }
 
-        private fun read(key: SelectionKey) {
-            val client = key.channel() as? SocketChannel ?: return
-            val attachment = key.attachment()
-            val id = attachment as? Int ?: return
-
-            val info = clients[id] ?: return
-
-            val buffer = info.buffer
-            buffer.clear()
-
-            val bytesRead = client.read(buffer)
-            if (bytesRead < 0) {
-                LOGGER.info("client ${info.id} disconnected: $client")
-                client.close()
-                key.cancel()
-                clients -= info.id
-
+        override fun onDisconnected(id: ClientId) {
+            val client = clientTracker[id]
+            if (client == null) {
+                LOGGER.warn("disconnected client that we're not tracking? $id")
                 return
             }
 
-            LOGGER.info("client ${info.id} sent $bytesRead bytes, accumulating...")
+            clientTracker -= client.id
 
-            info.accumulator.add(buffer.array(), bytesRead)
+            LOGGER.info("disconnected $client")
         }
 
-        override fun onBufferOverran(connectionId: Int) {
-            val client = clients[connectionId] ?: return
-            LOGGER.info("client ${client.id} onBufferOverran, disconnecting them")
-            client.socket.close()
+        override fun onRead(id: ClientId, buffer: ByteBuffer, bytesRead: Int) {
+            val client = clientTracker[id]
+            if (client == null) {
+                LOGGER.warn("read bytes from a client we're not tracking: $id")
+                return
+            }
+
+            LOGGER.info("client $client sent $bytesRead bytes, accumulating...")
+
+            client.accumulator.add(buffer.array(), bytesRead)
         }
 
-        override fun onLineAccumulated(connectionId: Int, line: String) {
-            val client = clients[connectionId] ?: return
-            LOGGER.info("client ${client.id} sent line: $line")
+        // ILineAccumulatorListener
+
+        // TODO: Should this be on a "client object" ?
+
+        override fun onBufferOverran(id: ClientId) {
+            LOGGER.info("client $id onBufferOverran, disconnecting them")
+            disconnect(id)
+        }
+
+        override fun onLineAccumulated(id: ClientId, line: String) {
+            val client = clientTracker[id]
+            if (client == null) {
+                LOGGER.warn("accumulated a line for a client we don't know about: $id - $line")
+                return
+            }
+
+            LOGGER.info("client $client sent line: $line")
+
+            // TODO: Add to processing queue
 
             val ircMessage = IrcMessageParser.parse(line)
             if (ircMessage == null) {
-                LOGGER.warn("client ${client.id} sent malformed message")
-                client.socket.close()
+                LOGGER.warn("client $client sent malformed message, disconnecting them")
+                disconnect(client.id)
             } else {
-                LOGGER.info("client ${client.id} sent irc message: $ircMessage")
+                LOGGER.info("client $client sent irc message: $ircMessage")
             }
+        }
+
+        private fun disconnect(id: ClientId) {
+            val client = clientTracker[id]
+            if (client == null) {
+                LOGGER.warn("couldn't disconnect client because we're not tracking them $id")
+                return
+            }
+
+            if (!client.socket.isConnected) {
+                LOGGER.warn("tried to disconnect client whose socket isn't connected, untracking them anyway $id")
+                clientTracker -= client.id
+                return
+            }
+
+            client.socket.close()
+            clientTracker -= client.id
         }
     }
 
