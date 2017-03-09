@@ -48,6 +48,8 @@ class SocketProcessor(private val nioWrapper: INIOWrapper, private val incomingB
     private val LOGGER = loggerFor<SocketProcessor>()
 
     override fun run() {
+        LOGGER.info("starting...")
+
         while (!interruptedChecker.isInterrupted) {
             val keys = nioWrapper.select()
 

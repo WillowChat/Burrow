@@ -5,6 +5,8 @@ import chat.willow.kale.irc.message.IrcMessageParser
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
+import java.util.concurrent.LinkedBlockingQueue
+import kotlin.concurrent.thread
 
 object Burrow {
 
@@ -19,14 +21,16 @@ object Burrow {
         val selectorFactory = SelectorFactory
         val nioWrapper = NIOWrapper(selectorFactory)
         val socketProcessorFactory = SocketProcessorFactory
-        val server = Server(nioWrapper, socketProcessorFactory, clientTracker)
+        val interruptedChecker = ThreadInterruptedChecker
+        val messageProcessor = IrcMessageProcessor(interruptedChecker)
+        val server = Server(nioWrapper, socketProcessorFactory, clientTracker, messageProcessor, interruptedChecker)
 
         server.start()
 
         LOGGER.info("server ended")
     }
 
-    class Server(private val nioWrapper: INIOWrapper, private val socketProcessorFactory: ISocketProcessorFactory, private val clientTracker: IClientTracker) : ISocketProcessorDelegate, ILineAccumulatorListener {
+    class Server(private val nioWrapper: INIOWrapper, private val socketProcessorFactory: ISocketProcessorFactory, private val clientTracker: IClientTracker, private val messageProcessor: IIrcMessageProcessor, private val interruptedChecker: IInterruptedChecker) : ISocketProcessorDelegate, ILineAccumulatorListener {
 
         companion object {
             val BUFFER_SIZE = 4096
@@ -38,8 +42,17 @@ object Burrow {
             val socketAddress = InetSocketAddress("0.0.0.0", 6667)
             nioWrapper.setUp(socketAddress)
 
-            val socketProcessor = socketProcessorFactory.create(nioWrapper, buffer = ByteBuffer.allocate(MAX_LINE_LENGTH), delegate = this, interruptedChecker = ThreadInterruptedChecker)
-            socketProcessor.run()
+            val socketProcessor = socketProcessorFactory.create(nioWrapper, buffer = ByteBuffer.allocate(MAX_LINE_LENGTH), delegate = this, interruptedChecker = interruptedChecker)
+
+            val messageProcessorThread = thread(start = false) { messageProcessor.run() }
+            val socketProcessorThread = thread(start = false) { socketProcessor.run() }
+
+            messageProcessorThread.start()
+            socketProcessorThread.start()
+
+            // TODO: bail either thread out if either end
+            messageProcessorThread.join()
+            socketProcessorThread.join()
         }
 
         // ISocketProcessorDelegate
@@ -78,8 +91,6 @@ object Burrow {
 
         // ILineAccumulatorListener
 
-        // TODO: Should this be on a "client object" ?
-
         override fun onBufferOverran(id: ClientId) {
             LOGGER.info("client $id onBufferOverran, disconnecting them")
             disconnect(id)
@@ -94,14 +105,12 @@ object Burrow {
 
             LOGGER.info("client $client sent line: $line")
 
-            // TODO: Add to processing queue
-
             val ircMessage = IrcMessageParser.parse(line)
             if (ircMessage == null) {
                 LOGGER.warn("client $client sent malformed message, disconnecting them")
                 disconnect(client.id)
             } else {
-                LOGGER.info("client $client sent irc message: $ircMessage")
+                messageProcessor += (client to ircMessage)
             }
         }
 
