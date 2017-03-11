@@ -3,6 +3,11 @@ Kotlin (JVM targeted), tested, IRC v3.2 daemon. Intended to replace mostly untes
 
 This project is almost brand new. It's unlikely to be production-ready until version 1.
 
+## Support
+
+<a href="https://patreon.com/carrotcodes"><img src="https://s3.amazonaws.com/patreon_public_assets/toolbox/patreon.png" align="left" width="160" ></a>
+If you use this library and you'd like to support my open-source work, please consider tipping through [Patreon](https://patreon.com/carrotcodes).
+
 ## Project Goals
 * Test-driven from the start (90%+ coverage minimum)
 * Get a basic daemon going - clients should be able to:
