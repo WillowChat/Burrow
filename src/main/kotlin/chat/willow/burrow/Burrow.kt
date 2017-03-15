@@ -1,11 +1,11 @@
 package chat.willow.burrow
 
 import chat.willow.burrow.helper.*
+import chat.willow.burrow.network.*
 import chat.willow.kale.irc.message.IrcMessageParser
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
-import java.util.concurrent.LinkedBlockingQueue
 import kotlin.concurrent.thread
 
 object Burrow {
@@ -57,7 +57,7 @@ object Burrow {
 
         // ISocketProcessorDelegate
 
-        override fun onAccepted(socket: INIOSocketChannelWrapper): ClientId {
+        override fun onAccepted(socket: INetworkSocket): ClientId {
             val client = clientTracker.track(socket, listener = this)
 
             LOGGER.info("accepted connection $client")

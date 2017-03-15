@@ -1,7 +1,8 @@
-package chat.willow.burrow.helper
+package chat.willow.burrow.network
 
 import chat.willow.burrow.ClientId
-import chat.willow.burrow.ISelectorFactory
+import chat.willow.burrow.network.INetworkSocket
+import chat.willow.burrow.network.ISelectorFactory
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.SelectionKey
@@ -9,14 +10,7 @@ import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 
-interface INIOSocketChannelWrapper {
-
-    val isConnected: Boolean
-    fun close()
-
-}
-
-class NIOSocketChannelWrapper(private val socket: SocketChannel): INIOSocketChannelWrapper {
+class NIOSocketChannelWrapper(private val socket: SocketChannel): INetworkSocket {
 
     override val isConnected: Boolean
         get() = socket.isConnected
@@ -50,7 +44,7 @@ interface INIOWrapper {
     fun setUp(address: InetSocketAddress)
     fun select(): MutableSet<ISelectionKeyWrapper>
     fun clearSelectedKeys()
-    fun accept(key: SelectionKey): Pair<INIOSocketChannelWrapper, SelectionKey>
+    fun accept(key: SelectionKey): Pair<INetworkSocket, SelectionKey>
     fun attach(id: ClientId, key: SelectionKey)
     fun read(key: SelectionKey, buffer: ByteBuffer): Pair<Int, ClientId>
     fun close(key: SelectionKey)
@@ -84,7 +78,7 @@ class NIOWrapper(val selectorFactory: ISelectorFactory): INIOWrapper {
         selector.selectedKeys().clear()
     }
 
-    override fun accept(key: SelectionKey): Pair<INIOSocketChannelWrapper, SelectionKey> {
+    override fun accept(key: SelectionKey): Pair<INetworkSocket, SelectionKey> {
         val channel = key.channel() as ServerSocketChannel
         val socket = channel.accept()
         socket.configureBlocking(false)

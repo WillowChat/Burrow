@@ -1,9 +1,8 @@
 package chat.willow.burrow
 
 import chat.willow.burrow.helper.IInterruptedChecker
-import chat.willow.burrow.helper.INIOSocketChannelWrapper
-import chat.willow.burrow.helper.INIOWrapper
-import chat.willow.burrow.helper.ISelectionKeyWrapper
+import chat.willow.burrow.helper.INetworkSocket
+import chat.willow.burrow.network.*
 import com.nhaarman.mockito_kotlin.any
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.verify
@@ -55,7 +54,7 @@ class SocketProcessorTests {
         whenever(mockNioWrapper.select())
                 .thenReturn(mutableSetOf(acceptableKey))
 
-        val mockSocket: INIOSocketChannelWrapper = mock()
+        val mockSocket: INetworkSocket = mock()
         val mockSelectionKey: SelectionKey = mock()
 
         whenever(mockNioWrapper.accept(any()))
@@ -80,7 +79,7 @@ class SocketProcessorTests {
         whenever(mockNioWrapper.select())
                 .thenReturn(mutableSetOf(acceptableKey))
 
-        val mockSocket: INIOSocketChannelWrapper = mock()
+        val mockSocket: INetworkSocket = mock()
         val mockSelectionKey: SelectionKey = mock()
 
         whenever(mockNioWrapper.accept(any()))

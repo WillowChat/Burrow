@@ -1,5 +1,7 @@
-package chat.willow.burrow
+package chat.willow.burrow.network
 
+import chat.willow.burrow.ClientId
+import chat.willow.burrow.network.INetworkSocket
 import chat.willow.burrow.helper.*
 import java.nio.ByteBuffer
 import java.nio.channels.SelectionKey
@@ -23,7 +25,7 @@ interface ISocketProcessor: Runnable
 
 interface ISocketProcessorDelegate {
 
-    fun onAccepted(socket: INIOSocketChannelWrapper): ClientId
+    fun onAccepted(socket: INetworkSocket): ClientId
     fun onRead(id: ClientId, buffer: ByteBuffer, bytesRead: Int)
     fun onDisconnected(id: ClientId)
 

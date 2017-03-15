@@ -1,6 +1,7 @@
 package chat.willow.burrow
 
-import chat.willow.burrow.helper.INIOSocketChannelWrapper
+import chat.willow.burrow.helper.INetworkSocket
+import chat.willow.burrow.network.INetworkSocket
 import com.nhaarman.mockito_kotlin.any
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.verify
@@ -26,7 +27,7 @@ class ClientTrackerTests {
     }
 
     @Test fun `track returns a new valid client`() {
-        val socket: INIOSocketChannelWrapper = mock()
+        val socket: INetworkSocket = mock()
         val listener: ILineAccumulatorListener = mock()
 
         val client = sut.track(socket, listener)
@@ -35,7 +36,7 @@ class ClientTrackerTests {
     }
 
     @Test fun `track uses the line accumulator pool`() {
-        val socket: INIOSocketChannelWrapper = mock()
+        val socket: INetworkSocket = mock()
         val listener: ILineAccumulatorListener = mock()
 
         val client = sut.track(socket, listener)
@@ -44,7 +45,7 @@ class ClientTrackerTests {
     }
 
     @Test fun `track assigns new clients different ids`() {
-        val socket: INIOSocketChannelWrapper = mock()
+        val socket: INetworkSocket = mock()
         val listener: ILineAccumulatorListener = mock()
 
         val clientOne = sut.track(socket, listener)
@@ -54,7 +55,7 @@ class ClientTrackerTests {
     }
 
     @Test fun `drop results in same client lookup failing`() {
-        val socket: INIOSocketChannelWrapper = mock()
+        val socket: INetworkSocket = mock()
         val listener: ILineAccumulatorListener = mock()
 
         val client = sut.track(socket, listener)
