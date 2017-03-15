@@ -1,7 +1,6 @@
-package chat.willow.burrow
+package chat.willow.burrow.network
 
 import chat.willow.burrow.helper.IInterruptedChecker
-import chat.willow.burrow.helper.INetworkSocket
 import chat.willow.burrow.network.*
 import com.nhaarman.mockito_kotlin.any
 import com.nhaarman.mockito_kotlin.mock

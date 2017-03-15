@@ -1,5 +1,6 @@
 package chat.willow.burrow
 
+import chat.willow.burrow.connection.ConnectionId
 import java.nio.ByteBuffer
 
 val NEW_LINE_BYTE = '\n'.toByte()
@@ -13,8 +14,8 @@ interface ILineAccumulator {
 
 interface ILineAccumulatorListener {
 
-    fun onLineAccumulated(id: Int, line: String)
-    fun onBufferOverran(id: Int)
+    fun onLineAccumulated(id: ConnectionId, line: String)
+    fun onBufferOverran(id: ConnectionId)
 
 }
 

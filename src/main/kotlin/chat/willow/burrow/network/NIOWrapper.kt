@@ -1,8 +1,6 @@
 package chat.willow.burrow.network
 
-import chat.willow.burrow.ClientId
-import chat.willow.burrow.network.INetworkSocket
-import chat.willow.burrow.network.ISelectorFactory
+import chat.willow.burrow.connection.ConnectionId
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.SelectionKey
@@ -31,6 +29,7 @@ interface ISelectionKeyWrapper {
 }
 
 class SelectionKeyWrapper(override val original: SelectionKey): ISelectionKeyWrapper {
+
     override val isAcceptable: Boolean
         get() = original.isAcceptable
 
@@ -45,8 +44,8 @@ interface INIOWrapper {
     fun select(): MutableSet<ISelectionKeyWrapper>
     fun clearSelectedKeys()
     fun accept(key: SelectionKey): Pair<INetworkSocket, SelectionKey>
-    fun attach(id: ClientId, key: SelectionKey)
-    fun read(key: SelectionKey, buffer: ByteBuffer): Pair<Int, ClientId>
+    fun attach(id: ConnectionId, key: SelectionKey)
+    fun read(key: SelectionKey, buffer: ByteBuffer): Pair<Int, ConnectionId>
     fun close(key: SelectionKey)
 
 }
@@ -88,13 +87,13 @@ class NIOWrapper(val selectorFactory: ISelectorFactory): INIOWrapper {
         return NIOSocketChannelWrapper(socket) to clientKey
     }
 
-    override fun attach(id: ClientId, key: SelectionKey) {
+    override fun attach(id: ConnectionId, key: SelectionKey) {
         key.attach(id)
     }
 
-    override fun read(key: SelectionKey, buffer: ByteBuffer): Pair<Int, ClientId> {
+    override fun read(key: SelectionKey, buffer: ByteBuffer): Pair<Int, ConnectionId> {
         val channel = key.channel() as SocketChannel
-        val id = key.attachment() as ClientId
+        val id = key.attachment() as ConnectionId
 
         buffer.clear()
 

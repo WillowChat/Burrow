@@ -17,7 +17,7 @@ val kotlinVersion by project
 val projectTitle = "Burrow"
 
 buildscript {
-    val buildscriptKotlinVersion = "1.1.0"
+    val buildscriptKotlinVersion = "1.1.1"
 
     repositories {
         gradleScriptKotlin()
