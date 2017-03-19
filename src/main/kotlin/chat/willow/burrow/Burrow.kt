@@ -38,7 +38,7 @@ object Burrow {
     class Server(private val nioWrapper: INIOWrapper, private val socketProcessorFactory: ISocketProcessorFactory, private val connectionTracker: IConnectionTracker, private val messageProcessor: IIrcMessageProcessor, private val interruptedChecker: IInterruptedChecker) : ISocketProcessorDelegate, ILineAccumulatorListener {
 
         companion object {
-            val BUFFER_SIZE = 4096
+            val BUFFER_SIZE = 8192
             val MAX_LINE_LENGTH = BUFFER_SIZE
             val UTF_8: Charset = Charset.forName("UTF-8")
         }
