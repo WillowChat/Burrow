@@ -7,8 +7,6 @@ import chat.willow.kale.irc.prefix.PrefixParser
 
 interface IBurrowIrcMessageHandler {
 
-    val command: String
-
     fun on(message: IrcMessage)
 
 }
@@ -19,13 +17,9 @@ interface IBurrowMessageHandler<in T> {
 
 }
 
-abstract class BurrowHandler<in T>(override val command: String, private val parser: IMessageParser<T>) : IBurrowIrcMessageHandler, IBurrowMessageHandler<T> {
+abstract class BurrowHandler<in T>(private val parser: IMessageParser<T>) : IBurrowIrcMessageHandler, IBurrowMessageHandler<T> {
 
     override fun on(message: IrcMessage) {
-        if (message.command != command) {
-            return
-        }
-
         val parsedMessage = parser.parse(message) ?: return
 
         handle(parsedMessage)
@@ -33,7 +27,7 @@ abstract class BurrowHandler<in T>(override val command: String, private val par
 
 }
 
-class NickHandler : BurrowHandler<NickMessage.Command>(NickMessage.command, NickMessage.Command.Parser) {
+class NickHandler : BurrowHandler<NickMessage.Command>(NickMessage.Command.Parser) {
 
     private val LOGGER = loggerFor<NickHandler>()
 
@@ -43,7 +37,7 @@ class NickHandler : BurrowHandler<NickMessage.Command>(NickMessage.command, Nick
 
 }
 
-class NickMessageHandler : BurrowHandler<NickMessage.Message>(NickMessage.command, NickMessage.Message.Parser) {
+class NickMessageHandler : BurrowHandler<NickMessage.Message>(NickMessage.Message.Parser) {
 
     private val LOGGER = loggerFor<NickMessageHandler>()
 
@@ -58,10 +52,6 @@ abstract class BurrowSubcommandHandler(private val handlers: Map<String, IBurrow
     private val LOGGER = loggerFor<BurrowSubcommandHandler>()
 
     override fun on(message: IrcMessage) {
-        if (message.command != command) {
-            return
-        }
-
         if (message.parameters.isEmpty()) {
             return
         }
@@ -79,15 +69,13 @@ abstract class BurrowSubcommandHandler(private val handlers: Map<String, IBurrow
 
 }
 
-class CapHandler(private val lsHandler: BurrowHandler<CapLsMessage.Command>, handlers: Map<String, IBurrowIrcMessageHandler> = mapOf(CapLsMessage.command to lsHandler)) : BurrowSubcommandHandler(handlers) {
+class CapHandler(private val lsHandler: BurrowHandler<CapMessage.Ls.Command>, handlers: Map<String, IBurrowIrcMessageHandler> = mapOf(CapMessage.Ls.subcommand to lsHandler)) : BurrowSubcommandHandler(handlers) {
 
-    override val command = "CAP"
-
-    class CapLsHandler : BurrowHandler<CapLsMessage.Command>(CapLsMessage.command, CapLsMessage.Command.Parser) {
+    class CapLsHandler : BurrowHandler<CapMessage.Ls.Command>(CapMessage.Ls.Command.Parser) {
 
         private val LOGGER = loggerFor<CapLsHandler>()
 
-        override fun handle(message: CapLsMessage.Command) {
+        override fun handle(message: CapMessage.Ls.Command) {
             LOGGER.info("user sent cap ls command: $message")
         }
 
@@ -149,7 +137,7 @@ interface ICommand {
 
 }
 
-interface ISubcommand : ICommand {
+interface ISubcommand {
 
     val subcommand: String
 }
@@ -241,39 +229,44 @@ object NickMessage : ICommand {
 
 }
 
-object CapLsMessage : ISubcommand {
+object CapMessage : ICommand {
 
     override val command = "CAP"
-    override val subcommand = "LS"
 
-    data class Command(val version: String?) {
+    object Ls : ISubcommand {
 
-        object Parser : SubcommandParser<Command>(subcommand) {
+        override val subcommand = "LS"
 
-            override fun parseFromComponents(components: IrcMessageComponents): Command? {
-                val version = components.parameters.getOrNull(0)
+        data class Command(val version: String?) {
 
-                return Command(version)
-            }
+            object Parser : SubcommandParser<Command>(subcommand) {
 
-        }
+                override fun parseFromComponents(components: IrcMessageComponents): Command? {
+                    val version = components.parameters.getOrNull(0)
 
-        object Serialiser : SubcommandSerialiser<Command>(command, subcommand) {
-
-            override fun serialiseToComponents(message: Command): IrcMessageComponents {
-                val parameters: List<String> = if (message.version == null) {
-                    listOf()
-                } else {
-                    listOf(message.version)
+                    return Command(version)
                 }
 
-                return IrcMessageComponents(parameters = parameters)
+            }
+
+            object Serialiser : SubcommandSerialiser<Command>(command, subcommand) {
+
+                override fun serialiseToComponents(message: Command): IrcMessageComponents {
+                    val parameters: List<String> = if (message.version == null) {
+                        listOf()
+                    } else {
+                        listOf(message.version)
+                    }
+
+                    return IrcMessageComponents(parameters = parameters)
+                }
+
             }
 
         }
 
-    }
+        data class Message(val target: String, val caps: List<String>)
 
-    data class Message(val target: String, val caps: List<String>)
+    }
 
 }

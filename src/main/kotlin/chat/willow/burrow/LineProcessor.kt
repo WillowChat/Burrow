@@ -30,16 +30,16 @@ class LineProcessor(private val interruptedChecker: IInterruptedChecker): IIrcMe
     private val handlers = mutableMapOf<String, IBurrowIrcMessageHandler>()
 
     init {
-        addHandler(handlers, NickHandler())
+        addHandler(handlers, NickMessage.command, NickHandler())
 
         val capLsHandler = CapHandler.CapLsHandler()
-        addHandler(handlers, capLsHandler)
+        addHandler(handlers, CapMessage.command, capLsHandler)
     }
 
     object Util {
 
-        fun addHandler(handlers: MutableMap<String, IBurrowIrcMessageHandler>, handler: BurrowHandler<*>) {
-            handlers += (handler.command to handler)
+        fun addHandler(handlers: MutableMap<String, IBurrowIrcMessageHandler>, command: String, handler: BurrowHandler<*>) {
+            handlers += (command to handler)
         }
 
     }
