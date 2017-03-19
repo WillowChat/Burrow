@@ -43,6 +43,16 @@ class NickHandler : BurrowHandler<NickMessage.Command>(NickMessage.command, Nick
 
 }
 
+class NickMessageHandler : BurrowHandler<NickMessage.Message>(NickMessage.command, NickMessage.Message.Parser) {
+
+    private val LOGGER = loggerFor<NickMessageHandler>()
+
+    override fun handle(message: NickMessage.Message) {
+        LOGGER.info("user changed their nick from ${message.source.nick} to ${message.nick}")
+    }
+
+}
+
 abstract class BurrowSubcommandHandler(private val handlers: Map<String, IBurrowIrcMessageHandler>) : IBurrowIrcMessageHandler {
 
     private val LOGGER = loggerFor<BurrowSubcommandHandler>()
