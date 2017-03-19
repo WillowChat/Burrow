@@ -1,5 +1,6 @@
 package chat.willow.burrow
 
+import chat.willow.burrow.LineProcessor.Util.addHandler
 import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.helper.IInterruptedChecker
 import chat.willow.burrow.helper.loggerFor
@@ -26,13 +27,21 @@ class LineProcessor(private val interruptedChecker: IInterruptedChecker): IIrcMe
 
     private val queue = LinkedBlockingQueue<LineProcessingItem>()
 
-    private val handlers = mutableMapOf<String, IBurrowHandler>()
+    private val handlers = mutableMapOf<String, IBurrowIrcMessageHandler>()
 
     init {
-        handlers += (NickMessage.command to NickHandler())
+        addHandler(handlers, NickHandler())
 
         val capLsHandler = CapHandler.CapLsHandler()
-        handlers += ("CAP" to capLsHandler)
+        addHandler(handlers, capLsHandler)
+    }
+
+    object Util {
+
+        fun addHandler(handlers: MutableMap<String, IBurrowIrcMessageHandler>, handler: BurrowHandler<*>) {
+            handlers += (handler.command to handler)
+        }
+
     }
 
     override fun run() {

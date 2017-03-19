@@ -5,7 +5,7 @@ import chat.willow.kale.irc.message.IrcMessage
 import chat.willow.kale.irc.prefix.Prefix
 import chat.willow.kale.irc.prefix.PrefixParser
 
-interface IBurrowHandler {
+interface IBurrowIrcMessageHandler {
 
     val command: String
 
@@ -13,7 +13,13 @@ interface IBurrowHandler {
 
 }
 
-abstract class BurrowHandler<in T>(override val command: String, private val parser: IMessageParser<T>) : IBurrowHandler {
+interface IBurrowMessageHandler<in T> {
+
+    fun handle(message: T)
+
+}
+
+abstract class BurrowHandler<in T>(override val command: String, private val parser: IMessageParser<T>) : IBurrowIrcMessageHandler, IBurrowMessageHandler<T> {
 
     override fun on(message: IrcMessage) {
         if (message.command != command) {
@@ -24,8 +30,6 @@ abstract class BurrowHandler<in T>(override val command: String, private val par
 
         handle(parsedMessage)
     }
-
-    abstract protected fun handle(message: T)
 
 }
 
@@ -39,7 +43,7 @@ class NickHandler : BurrowHandler<NickMessage.Command>(NickMessage.command, Nick
 
 }
 
-abstract class BurrowSubcommandHandler(private val handlers: Map<String, BurrowHandler<*>>) : IBurrowHandler {
+abstract class BurrowSubcommandHandler(private val handlers: Map<String, IBurrowIrcMessageHandler>) : IBurrowIrcMessageHandler {
 
     private val LOGGER = loggerFor<BurrowSubcommandHandler>()
 
@@ -65,7 +69,7 @@ abstract class BurrowSubcommandHandler(private val handlers: Map<String, BurrowH
 
 }
 
-class CapHandler(private val lsHandler: BurrowHandler<CapLsMessage.Command>, handlers: Map<String, BurrowHandler<*>> = mapOf(CapLsMessage.command to lsHandler)) : BurrowSubcommandHandler(handlers) {
+class CapHandler(private val lsHandler: BurrowHandler<CapLsMessage.Command>, handlers: Map<String, IBurrowIrcMessageHandler> = mapOf(CapLsMessage.command to lsHandler)) : BurrowSubcommandHandler(handlers) {
 
     override val command = "CAP"
 
@@ -87,7 +91,13 @@ interface IMessageParser<out T> {
 
 }
 
-abstract class MessageParser<out T>(private val command: String) : IMessageParser<T> {
+interface IComponentsParser<out T> {
+
+    fun parseFromComponents(components: IrcMessageComponents): T?
+
+}
+
+abstract class MessageParser<out T>(private val command: String) : IMessageParser<T>, IComponentsParser<T> {
 
     override fun parse(message: IrcMessage): T? {
         if (message.command != command) {
@@ -99,7 +109,6 @@ abstract class MessageParser<out T>(private val command: String) : IMessageParse
         return parseFromComponents(components)
     }
 
-    abstract protected fun parseFromComponents(components: IrcMessageComponents): T?
 }
 
 interface IMessageSerialiser<in T> {
@@ -108,7 +117,13 @@ interface IMessageSerialiser<in T> {
 
 }
 
-abstract class MessageSerialiser<in T>(private val command: String) : IMessageSerialiser<T> {
+interface IComponentsSerialiser<in T> {
+
+    fun serialiseToComponents(message: T): IrcMessageComponents
+
+}
+
+abstract class MessageSerialiser<in T>(private val command: String) : IMessageSerialiser<T>, IComponentsSerialiser<T> {
 
     override fun serialise(message: T): IrcMessage? {
         val components = serialiseToComponents(message)
@@ -116,7 +131,6 @@ abstract class MessageSerialiser<in T>(private val command: String) : IMessageSe
         return IrcMessage(command = command, tags = components.tags, prefix = components.prefix, parameters = components.parameters)
     }
 
-    abstract protected fun serialiseToComponents(message: T): IrcMessageComponents
 }
 
 interface ICommand {
