@@ -2,6 +2,7 @@ package chat.willow.burrow
 
 import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.helper.IInterruptedChecker
+import chat.willow.burrow.kale.IBurrowKaleWrapper
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.verify
 import com.nhaarman.mockito_kotlin.whenever
@@ -12,11 +13,13 @@ class LineProcessorTests {
 
     private lateinit var sut: LineProcessor
     private lateinit var mockInterruptedChecker: IInterruptedChecker
+    private lateinit var mockBurrowKaleWrapper: IBurrowKaleWrapper
 
     @Before fun setUp() {
         mockInterruptedChecker = mock()
+        mockBurrowKaleWrapper = mock()
 
-        sut = LineProcessor(mockInterruptedChecker)
+        sut = LineProcessor(mockInterruptedChecker, mockBurrowKaleWrapper)
     }
 
     @Test fun `when run is called, it checks if interrupted`() {
@@ -29,7 +32,7 @@ class LineProcessorTests {
     }
 
     @Test fun `when an item is added with plusAssign and then run, there are no exceptions`() {
-        val clientOne = BurrowConnection(1, mock(), mock(), mock())
+        val clientOne = BurrowConnection(1, mock(), mock())
         val messageOne = "1"
 
         whenever(mockInterruptedChecker.isInterrupted)

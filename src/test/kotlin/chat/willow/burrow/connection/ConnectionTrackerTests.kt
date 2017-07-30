@@ -4,7 +4,6 @@ import chat.willow.burrow.ILineAccumulator
 import chat.willow.burrow.ILineAccumulatorListener
 import chat.willow.burrow.ILineAccumulatorPool
 import chat.willow.burrow.connection.ConnectionTracker
-import chat.willow.burrow.connection.IKaleFactory
 import chat.willow.burrow.network.INetworkSocket
 import chat.willow.kale.IKale
 import com.nhaarman.mockito_kotlin.any
@@ -20,19 +19,16 @@ class ConnectionTrackerTests {
     private lateinit var sut: ConnectionTracker
     private lateinit var mockLineAccumulatorPool: ILineAccumulatorPool
     private lateinit var mockLineAccumulator: ILineAccumulator
-    private lateinit var mockKaleFactory: IKaleFactory
     private lateinit var mockKale: IKale
 
     @Before fun setUp() {
         mockLineAccumulatorPool = mock()
         mockLineAccumulator = mock()
-        mockKaleFactory = mock()
         mockKale = mock()
 
         whenever(mockLineAccumulatorPool.next(any(), any())).thenReturn(mockLineAccumulator)
-        whenever(mockKaleFactory.create(any(), any())).thenReturn(mockKale)
 
-        sut = ConnectionTracker(lineAccumulatorPool = mockLineAccumulatorPool, kaleFactory = mockKaleFactory)
+        sut = ConnectionTracker(lineAccumulatorPool = mockLineAccumulatorPool)
     }
 
     @Test fun `track returns a new valid connection`() {

@@ -3,10 +3,24 @@ package chat.willow.burrow
 import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.connection.ConnectionTracker
 import chat.willow.burrow.connection.IConnectionTracker
-import chat.willow.burrow.connection.KaleFactory
-import chat.willow.burrow.helper.*
+import chat.willow.burrow.handler.*
+import chat.willow.burrow.helper.IInterruptedChecker
+import chat.willow.burrow.helper.ThreadInterruptedChecker
+import chat.willow.burrow.helper.loggerFor
+import chat.willow.burrow.kale.*
 import chat.willow.burrow.network.*
-import chat.willow.kale.irc.message.IrcMessageParser
+import chat.willow.burrow.state.ClientTracker
+import chat.willow.burrow.state.IClientTracker
+import chat.willow.kale.IKaleMetadataFactory
+import chat.willow.kale.IKaleRouter
+import chat.willow.kale.KaleMetadataFactory
+import chat.willow.kale.irc.message.extension.cap.CapMessage
+import chat.willow.kale.irc.message.rfc1459.*
+import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001Message
+import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001MessageType
+import chat.willow.kale.irc.message.rfc1459.rpl.Rpl353Message
+import chat.willow.kale.irc.message.utility.RawMessage
+import chat.willow.kale.irc.tag.KaleTagRouter
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
@@ -20,19 +34,51 @@ object Burrow {
         LOGGER.info("starting server...")
 
         val lineAccumulatorPool = LineAccumulatorPool(bufferSize = Burrow.Server.MAX_LINE_LENGTH)
-        val kaleFactory = KaleFactory
-        val clientTracker = ConnectionTracker(lineAccumulatorPool, kaleFactory)
+
+        val connectionTracker = ConnectionTracker(lineAccumulatorPool)
+        val clientTracker = ClientTracker(connectionTracker)
+        val kaleWrapper = createKaleWrapper(BurrowRouter(), KaleMetadataFactory(KaleTagRouter()), clientTracker, connectionTracker)
+        connectionTracker.kaleWrapper = kaleWrapper
+        connectionTracker.clientTracker = clientTracker
 
         val selectorFactory = SelectorFactory
         val nioWrapper = NIOWrapper(selectorFactory)
         val socketProcessorFactory = SocketProcessorFactory
         val interruptedChecker = ThreadInterruptedChecker
-        val messageProcessor = LineProcessor(interruptedChecker)
-        val server = Server(nioWrapper, socketProcessorFactory, clientTracker, messageProcessor, interruptedChecker)
+
+        val messageProcessor = LineProcessor(interruptedChecker, kaleWrapper)
+        val server = Server(nioWrapper, socketProcessorFactory, connectionTracker, messageProcessor, interruptedChecker)
 
         server.start()
 
         LOGGER.info("server ended")
+    }
+
+    fun createKaleWrapper(router: IKaleRouter<IBurrowIrcMessageHandler>, metadataFactory: IKaleMetadataFactory, clientTracker: IClientTracker, connectionTracker: IConnectionTracker): IBurrowKaleWrapper {
+        val userHandler = UserHandler(clientTracker)
+        val nickHandler = NickHandler(clientTracker)
+        val capLsHandler = CapLsHandler(clientTracker)
+        val joinHandler = JoinHandler(connectionTracker)
+        val privMsgHandler = PrivMsgHandler(connectionTracker, clientTracker)
+        val pingHandler = PingHandler(connectionTracker)
+        val capHandler = BurrowSubcommandHandler(mapOf(CapMessage.Ls.subcommand to capLsHandler))
+
+        router.register(UserMessage.command, userHandler)
+        router.register(NickMessage.command, nickHandler)
+        router.register(CapMessage.command, capHandler)
+        router.register(JoinMessage.command, joinHandler)
+        router.register(PrivMsgMessage.command, privMsgHandler)
+        router.register(PingMessage.command, pingHandler)
+
+        router.register(JoinMessage.Message::class, JoinMessage.Message.Serialiser)
+        router.register(PrivMsgMessage.Message::class, PrivMsgMessage.Message.Serialiser)
+        router.register(Rpl001MessageType::class, Rpl001Message.Serialiser)
+        router.register(Rpl353Message.Message::class, Rpl353Message.Message.Serialiser)
+        router.register(PingMessage.Command::class, PingMessage.Command.Serialiser)
+
+        router.register(RawMessage.Line::class, RawMessage.Line.Serialiser)
+
+        return BurrowKaleWrapper(router, metadataFactory)
     }
 
     class Server(private val nioWrapper: INIOWrapper, private val socketProcessorFactory: ISocketProcessorFactory, private val connectionTracker: IConnectionTracker, private val messageProcessor: IIrcMessageProcessor, private val interruptedChecker: IInterruptedChecker) : ISocketProcessorDelegate, ILineAccumulatorListener {
@@ -49,8 +95,8 @@ object Burrow {
 
             val socketProcessor = socketProcessorFactory.create(nioWrapper, buffer = ByteBuffer.allocate(MAX_LINE_LENGTH), delegate = this, interruptedChecker = interruptedChecker)
 
-            val messageProcessorThread = thread(start = false) { messageProcessor.run() }
-            val socketProcessorThread = thread(start = false) { socketProcessor.run() }
+            val messageProcessorThread = thread(name = "message processor", start = false) { messageProcessor.run() }
+            val socketProcessorThread = thread(name = "socket processor", start = false) { socketProcessor.run() }
 
             messageProcessorThread.start()
             socketProcessorThread.start()

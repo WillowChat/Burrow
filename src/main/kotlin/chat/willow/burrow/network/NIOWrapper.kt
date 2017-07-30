@@ -1,20 +1,31 @@
 package chat.willow.burrow.network
 
+import chat.willow.burrow.Burrow
 import chat.willow.burrow.connection.ConnectionId
 import java.net.InetSocketAddress
+import java.net.Socket
 import java.nio.ByteBuffer
+import java.nio.CharBuffer
 import java.nio.channels.SelectionKey
 import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 
-class NIOSocketChannelWrapper(private val socket: SocketChannel): INetworkSocket {
+class NIOSocketChannelWrapper(private val internalSocket: SocketChannel): INetworkSocket {
 
     override val isConnected: Boolean
-        get() = socket.isConnected
+        get() = internalSocket.isConnected
+
+    override val socket: Socket
+        get() = internalSocket.socket()
 
     override fun close() {
-        socket.close()
+        internalSocket.close()
+    }
+
+    override fun sendLine(line: String) {
+        val byteBuffer = Burrow.Server.UTF_8.encode(line + "\r\n")
+        internalSocket.write(byteBuffer)
     }
 
 }

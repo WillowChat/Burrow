@@ -1,7 +1,8 @@
 package chat.willow.burrow.network
 
 import chat.willow.burrow.connection.ConnectionId
-import chat.willow.burrow.helper.*
+import chat.willow.burrow.helper.IInterruptedChecker
+import chat.willow.burrow.helper.loggerFor
 import java.nio.ByteBuffer
 import java.nio.channels.Selector
 
