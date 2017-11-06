@@ -46,8 +46,8 @@ object Burrow {
         val socketProcessorFactory = SocketProcessorFactory
         val interruptedChecker = ThreadInterruptedChecker
 
-        val messageProcessor = LineProcessor(interruptedChecker, kaleWrapper)
-        val server = Server(nioWrapper, socketProcessorFactory, connectionTracker, messageProcessor, interruptedChecker)
+        val lineProcessor = LineProcessor(interruptedChecker, kaleWrapper)
+        val server = Server(nioWrapper, socketProcessorFactory, connectionTracker, lineProcessor, interruptedChecker)
 
         server.start()
 
@@ -81,7 +81,11 @@ object Burrow {
         return BurrowKaleWrapper(router, metadataFactory)
     }
 
-    class Server(private val nioWrapper: INIOWrapper, private val socketProcessorFactory: ISocketProcessorFactory, private val connectionTracker: IConnectionTracker, private val messageProcessor: IIrcMessageProcessor, private val interruptedChecker: IInterruptedChecker) : ISocketProcessorDelegate, ILineAccumulatorListener {
+    class Server(private val nioWrapper: INIOWrapper,
+                 private val socketProcessorFactory: ISocketProcessorFactory,
+                 private val connectionTracker: IConnectionTracker,
+                 private val lineProcessor: IIrcMessageProcessor,
+                 private val interruptedChecker: IInterruptedChecker) : ISocketProcessorDelegate, ILineAccumulatorListener {
 
         companion object {
             val BUFFER_SIZE = 8192
@@ -95,14 +99,14 @@ object Burrow {
 
             val socketProcessor = socketProcessorFactory.create(nioWrapper, buffer = ByteBuffer.allocate(MAX_LINE_LENGTH), delegate = this, interruptedChecker = interruptedChecker)
 
-            val messageProcessorThread = thread(name = "message processor", start = false) { messageProcessor.run() }
+            val lineProcessorThread = thread(name = "message processor", start = false) { lineProcessor.run() }
             val socketProcessorThread = thread(name = "socket processor", start = false) { socketProcessor.run() }
 
-            messageProcessorThread.start()
+            lineProcessorThread.start()
             socketProcessorThread.start()
 
             // TODO: bail either thread out if either end
-            messageProcessorThread.join()
+            lineProcessorThread.join()
             socketProcessorThread.join()
         }
 
@@ -156,7 +160,7 @@ object Burrow {
 
             LOGGER.info("connection $client sent line: $line")
 
-            messageProcessor += (client to line)
+            lineProcessor += (client to line)
         }
 
         private fun disconnect(id: ConnectionId) {
