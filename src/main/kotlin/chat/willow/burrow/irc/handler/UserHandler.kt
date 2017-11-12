@@ -1,20 +1,19 @@
-package chat.willow.burrow.handler
+package chat.willow.burrow.irc.handler
 
+import chat.willow.burrow.kale.BurrowHandler
 import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.helper.loggerFor
-import chat.willow.burrow.kale.BurrowHandler
 import chat.willow.burrow.state.ClientLifecycle
-import chat.willow.burrow.state.ClientTracker
 import chat.willow.burrow.state.IClientTracker
 import chat.willow.kale.IMetadataStore
-import chat.willow.kale.irc.message.rfc1459.NickMessage
+import chat.willow.kale.irc.message.rfc1459.UserMessage
 
-class NickHandler(private val clientTracker: IClientTracker) : BurrowHandler<NickMessage.Command>(NickMessage.Command.Parser) {
+class UserHandler(private val clientTracker: IClientTracker) : BurrowHandler<UserMessage.Command>(UserMessage.Command.Parser) {
 
-    private val LOGGER = loggerFor<NickHandler>()
+    private val LOGGER = loggerFor<UserHandler>()
 
-    override fun handle(message: NickMessage.Command, metadata: IMetadataStore, id: ConnectionId) {
-        LOGGER.info("$id ~ handling NICK: $message")
+    override fun handle(message: UserMessage.Command, metadata: IMetadataStore, id: ConnectionId) {
+        LOGGER.info("$id ~ handling USER: $message")
 
         val lifecycle = clientTracker.lifecycleOf(id)
 
@@ -30,8 +29,7 @@ class NickHandler(private val clientTracker: IClientTracker) : BurrowHandler<Nic
                     return
                 }
 
-                // TODO: check nobody else has this nickname, and that it isn't protected
-                state.nick = message.nickname
+                state.user = message.username
 
                 clientTracker.userAddedRegInfo(id)
             }

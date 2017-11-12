@@ -70,7 +70,6 @@ compileJava {
 
 repositories {
     mavenCentral()
-    gradleScriptKotlin()
     maven { setUrl("https://maven.ci.carrot.codes") }
 }
 

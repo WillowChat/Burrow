@@ -3,7 +3,7 @@ package chat.willow.burrow
 import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.connection.ConnectionTracker
 import chat.willow.burrow.connection.IConnectionTracker
-import chat.willow.burrow.handler.*
+import chat.willow.burrow.irc.handler.*
 import chat.willow.burrow.helper.IInterruptedChecker
 import chat.willow.burrow.helper.ThreadInterruptedChecker
 import chat.willow.burrow.helper.loggerFor
@@ -160,6 +160,7 @@ object Burrow {
 
             LOGGER.info("connection $client sent line: $line")
 
+            // todo: client based throttling / filtering
             lineProcessor += (client to line)
         }
 

@@ -1,12 +1,10 @@
-package chat.willow.burrow.handler
+package chat.willow.burrow.irc.handler
 
 import chat.willow.burrow.connection.ConnectionId
-import chat.willow.burrow.connection.ConnectionTracker
 import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.burrow.kale.BurrowHandler
 import chat.willow.kale.IMetadataStore
-import chat.willow.kale.irc.CharacterCodes
 import chat.willow.kale.irc.message.rfc1459.JoinMessage
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl353Message
 import chat.willow.kale.irc.message.utility.RawMessage

@@ -1,5 +1,6 @@
-package chat.willow.burrow
+package chat.willow.burrow.unit
 
+import chat.willow.burrow.LineProcessor
 import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.helper.IInterruptedChecker
 import chat.willow.burrow.kale.IBurrowKaleWrapper

@@ -1,5 +1,7 @@
-package chat.willow.burrow
+package chat.willow.burrow.unit
 
+import chat.willow.burrow.ILineAccumulatorListener
+import chat.willow.burrow.LineAccumulatorPool
 import com.nhaarman.mockito_kotlin.mock
 import org.junit.Assert.assertFalse
 import org.junit.Before

@@ -1,4 +1,4 @@
-package chat.willow.burrow.handler
+package chat.willow.burrow.irc.handler
 
 import chat.willow.burrow.kale.BurrowHandler
 import chat.willow.burrow.connection.ConnectionId

@@ -1,9 +1,8 @@
-package chat.willow.burrow.handler
+package chat.willow.burrow.irc.handler
 
 import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.burrow.kale.BurrowHandler
-import chat.willow.burrow.state.ClientTracker
 import chat.willow.burrow.state.IClientTracker
 import chat.willow.kale.IMetadataStore
 import chat.willow.kale.irc.message.extension.cap.CapMessage

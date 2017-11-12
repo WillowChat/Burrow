@@ -1,16 +1,12 @@
-package chat.willow.burrow.handler
+package chat.willow.burrow.irc.handler
 
 import chat.willow.burrow.connection.ConnectionId
-import chat.willow.burrow.connection.ConnectionTracker
 import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.burrow.kale.BurrowHandler
 import chat.willow.burrow.state.IClientTracker
 import chat.willow.kale.IMetadataStore
-import chat.willow.kale.irc.CharacterCodes
 import chat.willow.kale.irc.message.rfc1459.PrivMsgMessage
-import chat.willow.kale.irc.message.rfc1459.rpl.Rpl353Message
-import chat.willow.kale.irc.message.utility.RawMessage
 import chat.willow.kale.irc.prefix.prefix
 
 class PrivMsgHandler(private val connectionTracker: IConnectionTracker, private val clientTracker: IClientTracker) : BurrowHandler<PrivMsgMessage.Command>(PrivMsgMessage.Command.Parser) {

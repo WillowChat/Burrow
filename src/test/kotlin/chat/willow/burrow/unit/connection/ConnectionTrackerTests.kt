@@ -1,4 +1,4 @@
-package chat.willow.burrow.connection
+package chat.willow.burrow.unit.connection
 
 import chat.willow.burrow.ILineAccumulator
 import chat.willow.burrow.ILineAccumulatorListener
