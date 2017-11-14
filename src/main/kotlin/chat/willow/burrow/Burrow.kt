@@ -31,7 +31,8 @@ object Burrow {
     private val LOGGER = loggerFor<Burrow>()
 
     @JvmStatic fun main(args: Array<String>) {
-        LOGGER.info("starting server...")
+        LOGGER.info("Starting...")
+        LOGGER.info("Support the development of this daemon through Patreon https://crrt.io/patreon 🎉")
 
         val lineAccumulatorPool = LineAccumulatorPool(bufferSize = Burrow.Server.MAX_LINE_LENGTH)
 
@@ -51,7 +52,7 @@ object Burrow {
 
         server.start()
 
-        LOGGER.info("server ended")
+        LOGGER.info("Ended")
     }
 
     fun createKaleWrapper(router: IKaleRouter<IBurrowIrcMessageHandler>, metadataFactory: IKaleMetadataFactory, clientTracker: IClientTracker, connectionTracker: IConnectionTracker): IBurrowKaleWrapper {
