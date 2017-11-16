@@ -26,7 +26,7 @@ interface IClientTracker {
     fun connectedStateOf(id: ConnectionId): ConnectedClientState?
 }
 
-class ClientTracker(private val connectionTracker: IConnectionTracker): IClientTracker{
+class ClientTracker(private val connectionTracker: IConnectionTracker): IClientTracker {
 
     private val LOGGER = loggerFor<ClientTracker>()
 

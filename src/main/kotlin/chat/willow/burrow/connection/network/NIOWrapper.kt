@@ -1,11 +1,10 @@
-package chat.willow.burrow.network
+package chat.willow.burrow.connection.network
 
 import chat.willow.burrow.Burrow
 import chat.willow.burrow.connection.ConnectionId
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.ByteBuffer
-import java.nio.CharBuffer
 import java.nio.channels.SelectionKey
 import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
@@ -49,6 +48,16 @@ class SelectionKeyWrapper(override val original: SelectionKey): ISelectionKeyWra
 
 }
 
+object SelectorFactory : ISelectorFactory {
+    override fun create(): Selector {
+        return Selector.open()
+    }
+}
+
+interface ISelectorFactory {
+    fun create(): Selector
+}
+
 interface INIOWrapper {
 
     fun setUp(address: InetSocketAddress)
@@ -61,12 +70,13 @@ interface INIOWrapper {
 
 }
 
-class NIOWrapper(val selectorFactory: ISelectorFactory): INIOWrapper {
+class NIOWrapper(private val selectorFactory: ISelectorFactory): INIOWrapper {
 
     private lateinit var selector: Selector
 
     override fun setUp(address: InetSocketAddress) {
         val channel = ServerSocketChannel.open()
+
         channel.bind(address)
         channel.configureBlocking(false)
 

@@ -1,5 +1,6 @@
-package chat.willow.burrow
+package chat.willow.burrow.connection.line
 
+import chat.willow.burrow.Burrow
 import chat.willow.burrow.connection.ConnectionId
 import java.nio.ByteBuffer
 

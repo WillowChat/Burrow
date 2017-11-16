@@ -1,10 +1,10 @@
 package chat.willow.burrow.unit.connection
 
-import chat.willow.burrow.ILineAccumulator
-import chat.willow.burrow.ILineAccumulatorListener
-import chat.willow.burrow.ILineAccumulatorPool
+import chat.willow.burrow.connection.line.ILineAccumulator
+import chat.willow.burrow.connection.line.ILineAccumulatorListener
+import chat.willow.burrow.connection.line.ILineAccumulatorPool
 import chat.willow.burrow.connection.ConnectionTracker
-import chat.willow.burrow.network.INetworkSocket
+import chat.willow.burrow.connection.network.INetworkSocket
 import chat.willow.kale.IKale
 import com.nhaarman.mockito_kotlin.any
 import com.nhaarman.mockito_kotlin.mock

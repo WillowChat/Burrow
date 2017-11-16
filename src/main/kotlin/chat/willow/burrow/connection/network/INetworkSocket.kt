@@ -1,4 +1,4 @@
-package chat.willow.burrow.network
+package chat.willow.burrow.connection.network
 
 import java.net.Socket
 

@@ -1,4 +1,4 @@
-package chat.willow.burrow.network
+package chat.willow.burrow.connection.network
 
 import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.helper.IInterruptedChecker
@@ -30,19 +30,6 @@ interface ISocketProcessorDelegate {
 
 }
 
-interface ISelectorFactory {
-
-    fun create(): Selector
-
-}
-
-object SelectorFactory: ISelectorFactory {
-
-    override fun create(): Selector {
-        return Selector.open()
-    }
-
-}
 
 class SocketProcessor(private val nioWrapper: INIOWrapper, private val incomingBuffer: ByteBuffer, private val delegate: ISocketProcessorDelegate, private val interruptedChecker: IInterruptedChecker): ISocketProcessor {
 

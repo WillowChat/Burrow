@@ -1,13 +1,14 @@
 package chat.willow.burrow.connection
 
-import chat.willow.burrow.ILineAccumulatorListener
-import chat.willow.burrow.ILineAccumulatorPool
+import chat.willow.burrow.connection.line.ILineAccumulator
+import chat.willow.burrow.connection.line.ILineAccumulatorListener
+import chat.willow.burrow.connection.line.ILineAccumulatorPool
 import chat.willow.burrow.helper.loggerFor
-import chat.willow.burrow.kale.BurrowKaleWrapper
 import chat.willow.burrow.kale.IBurrowKaleWrapper
-import chat.willow.burrow.network.INetworkSocket
+import chat.willow.burrow.connection.network.INetworkSocket
 import chat.willow.burrow.state.IClientTracker
 import chat.willow.kale.irc.message.IrcMessageSerialiser
+import io.reactivex.Observable
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -24,6 +25,14 @@ interface IConnectionTracker {
 
 }
 
+data class BurrowConnection(val id: ConnectionId, val socket: INetworkSocket, val accumulator: ILineAccumulator) {
+
+    override fun toString(): String {
+        return id.toString()
+    }
+
+}
+
 class ConnectionTracker(private val lineAccumulatorPool: ILineAccumulatorPool, var kaleWrapper: IBurrowKaleWrapper? = null, var clientTracker: IClientTracker? = null): IConnectionTracker {
 
     private val LOGGER = loggerFor<ConnectionTracker>()
@@ -35,11 +44,11 @@ class ConnectionTracker(private val lineAccumulatorPool: ILineAccumulatorPool, v
         val id = nextConnectionId.getAndIncrement()
         val accumulator = lineAccumulatorPool.next(id, listener)
 
-        val connection =  BurrowConnection(id, socket = socket, accumulator = accumulator)
+        val connection = BurrowConnection(id, socket = socket, accumulator = accumulator)
 
         connections[id] = connection
 
-        // TODO: CME?
+        // todo: look up their address, with a timer, and defer connection until that's done
         clientTracker?.trackNewClient(id, host = socket.socket.inetAddress.toString())
 
         return connection

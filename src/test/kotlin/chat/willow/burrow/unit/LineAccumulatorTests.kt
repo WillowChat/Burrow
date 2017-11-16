@@ -1,8 +1,8 @@
 package chat.willow.burrow.unit
 
 import chat.willow.burrow.Burrow.Server.Companion.UTF_8
-import chat.willow.burrow.ILineAccumulatorListener
-import chat.willow.burrow.LineAccumulator
+import chat.willow.burrow.connection.line.ILineAccumulatorListener
+import chat.willow.burrow.connection.line.LineAccumulator
 import com.nhaarman.mockito_kotlin.inOrder
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.verify

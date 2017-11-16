@@ -79,6 +79,8 @@ dependencies {
     compile("org.slf4j:slf4j-api:1.7.21")
     compile("chat.willow.kale:Kale:$kaleVersion")
     compile("com.squareup.okio:okio:1.11.0")
+    compile("io.reactivex.rxjava2:rxjava:2.1.6")
+    compile("io.reactivex.rxjava2:rxkotlin:2.1.0")
 
     runtime("org.slf4j:slf4j-simple:1.7.21")
 

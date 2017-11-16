@@ -1,4 +1,4 @@
-package chat.willow.burrow
+package chat.willow.burrow.connection.line
 
 import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.helper.IInterruptedChecker

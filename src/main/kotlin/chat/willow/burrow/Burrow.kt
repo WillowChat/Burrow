@@ -3,12 +3,16 @@ package chat.willow.burrow
 import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.connection.ConnectionTracker
 import chat.willow.burrow.connection.IConnectionTracker
+import chat.willow.burrow.connection.line.IIrcMessageProcessor
+import chat.willow.burrow.connection.line.ILineAccumulatorListener
+import chat.willow.burrow.connection.line.LineAccumulatorPool
+import chat.willow.burrow.connection.line.LineProcessor
 import chat.willow.burrow.irc.handler.*
 import chat.willow.burrow.helper.IInterruptedChecker
 import chat.willow.burrow.helper.ThreadInterruptedChecker
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.burrow.kale.*
-import chat.willow.burrow.network.*
+import chat.willow.burrow.connection.network.*
 import chat.willow.burrow.state.ClientTracker
 import chat.willow.burrow.state.IClientTracker
 import chat.willow.kale.IKaleMetadataFactory
@@ -34,7 +38,7 @@ object Burrow {
         LOGGER.info("Starting...")
         LOGGER.info("Support the development of this daemon through Patreon https://crrt.io/patreon 🎉")
 
-        val lineAccumulatorPool = LineAccumulatorPool(bufferSize = Burrow.Server.MAX_LINE_LENGTH)
+        val lineAccumulatorPool = LineAccumulatorPool(bufferSize = Server.MAX_LINE_LENGTH)
 
         val connectionTracker = ConnectionTracker(lineAccumulatorPool)
         val clientTracker = ClientTracker(connectionTracker)
@@ -95,7 +99,9 @@ object Burrow {
         }
 
         fun start() {
+            // todo: implicitly resolves hostname
             val socketAddress = InetSocketAddress("0.0.0.0", 6667)
+
             nioWrapper.setUp(socketAddress)
 
             val socketProcessor = socketProcessorFactory.create(nioWrapper, buffer = ByteBuffer.allocate(MAX_LINE_LENGTH), delegate = this, interruptedChecker = interruptedChecker)
