@@ -148,30 +148,4 @@ class LineAccumulatorTests {
         verify(mockListener).onLineAccumulated(1, "123456🥕✨")
     }
 
-    // TODO: move to `slow test` runner
-    @Test fun `fuzzing for crashes`() {
-        for (i in 0..1_000_000) {
-            val string = generateRandomLine(dictionary = " abcDEF123!@#🔥🥕✨", maxLength = 16)
-            val stringBytes = string.toByteArray(UTF_8)
-            sut.add(stringBytes, stringBytes.size)
-        }
-    }
-
-    fun generateRandomLine(dictionary: String, maxLength: Int): String {
-        val random = Random()
-        val length = random.nextInt(maxLength)
-
-        val sb = StringBuilder()
-
-        for (i in 0..length - 1 - 2) {
-            sb.append(dictionary[random.nextInt(dictionary.length)])
-        }
-
-        if (random.nextBoolean()) {
-            return sb.toString() + "\r\n"
-        } else {
-            return sb.toString()
-        }
-    }
-
 }
