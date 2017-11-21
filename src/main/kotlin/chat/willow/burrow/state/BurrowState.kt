@@ -1,7 +1,7 @@
 package chat.willow.burrow.state
 
 import chat.willow.burrow.connection.BurrowConnection
-import chat.willow.burrow.connection.ConnectionId
+import chat.willow.burrow.connection.network.ConnectionId
 
 data class BurrowState(val server: ConnectionState, val connections: Map<ConnectionId, BurrowConnection>)
 
