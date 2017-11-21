@@ -1,7 +1,5 @@
 package chat.willow.burrow.connection.network
 
-import chat.willow.burrow.Burrow
-import chat.willow.burrow.connection.ConnectionId
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.ByteBuffer
@@ -22,11 +20,9 @@ class NIOSocketChannelWrapper(private val internalSocket: SocketChannel): INetwo
         internalSocket.close()
     }
 
-    override fun sendLine(line: String) {
-        val byteBuffer = Burrow.Server.UTF_8.encode(line + "\r\n")
-        internalSocket.write(byteBuffer)
+    override fun write(bytes: ByteBuffer) {
+        internalSocket.write(bytes)
     }
-
 }
 
 interface ISelectionKeyWrapper {

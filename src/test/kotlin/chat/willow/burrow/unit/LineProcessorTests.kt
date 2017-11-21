@@ -33,7 +33,7 @@ class LineProcessorTests {
     }
 
     @Test fun `when an item is added with plusAssign and then run, there are no exceptions`() {
-        val clientOne = BurrowConnection(1, mock(), mock())
+        val clientOne = BurrowConnection(1, "host", mock(), mock())
         val messageOne = "1"
 
         whenever(mockInterruptedChecker.isInterrupted)

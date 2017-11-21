@@ -1,39 +1,44 @@
 package chat.willow.burrow.connection.network
 
-import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.helper.IInterruptedChecker
 import chat.willow.burrow.helper.loggerFor
+import io.reactivex.Observable
+import io.reactivex.subjects.PublishSubject
 import java.nio.ByteBuffer
-import java.nio.channels.Selector
+import java.util.concurrent.atomic.AtomicInteger
 
-interface ISocketProcessorFactory {
+typealias ConnectionId = Int
 
-    fun create(nioWrapper: INIOWrapper, buffer: ByteBuffer, delegate: ISocketProcessorDelegate, interruptedChecker: IInterruptedChecker): ISocketProcessor
-
+interface ISocketProcessor: Runnable {
+    val read: Observable<SocketProcessor.Read>
+    val accepted: Observable<SocketProcessor.Accepted>
+    val closed: Observable<SocketProcessor.Closed>
 }
 
-object SocketProcessorFactory: ISocketProcessorFactory {
-
-    override fun create(nioWrapper: INIOWrapper, buffer: ByteBuffer, delegate: ISocketProcessorDelegate, interruptedChecker: IInterruptedChecker): ISocketProcessor {
-        return SocketProcessor(nioWrapper, buffer, delegate, interruptedChecker)
-    }
-
-}
-
-interface ISocketProcessor: Runnable
-
-interface ISocketProcessorDelegate {
-
-    fun onAccepted(socket: INetworkSocket): ConnectionId
-    fun onRead(id: ConnectionId, buffer: ByteBuffer, bytesRead: Int)
-    fun onDisconnected(id: ConnectionId)
-
-}
-
-
-class SocketProcessor(private val nioWrapper: INIOWrapper, private val incomingBuffer: ByteBuffer, private val delegate: ISocketProcessorDelegate, private val interruptedChecker: IInterruptedChecker): ISocketProcessor {
+class SocketProcessor(private val nioWrapper: INIOWrapper, val incomingBuffer: ByteBuffer, private val interruptedChecker: IInterruptedChecker): ISocketProcessor {
 
     private val LOGGER = loggerFor<SocketProcessor>()
+
+    data class Read(val id: ConnectionId, val buffer: ByteBuffer, val bytes: Int)
+    override val read: Observable<Read>
+    private val readSubject = PublishSubject.create<Read>()
+
+    data class Accepted(val id: ConnectionId, val socket: INetworkSocket)
+    override val accepted: Observable<Accepted>
+    private val acceptedSubject = PublishSubject.create<Accepted>()
+
+    data class Closed(val id: ConnectionId)
+    override val closed: Observable<Closed>
+    private val closedSubject = PublishSubject.create<Closed>()
+
+    // todo: verify wraparound
+    private var nextConnectionId = AtomicInteger(0)
+
+    init {
+        read = readSubject
+        accepted = acceptedSubject
+        closed = closedSubject
+    }
 
     override fun run() {
         LOGGER.info("starting...")
@@ -55,8 +60,12 @@ class SocketProcessor(private val nioWrapper: INIOWrapper, private val incomingB
     }
 
     private fun accept(key: ISelectionKeyWrapper) {
+        // todo: ip level ban?
         val (socket, clientKey) = nioWrapper.accept(key.original)
-        val id = delegate.onAccepted(socket)
+
+        val id = nextConnectionId.getAndIncrement()
+        acceptedSubject.onNext(Accepted(id = id, socket = socket))
+
         nioWrapper.attach(id, clientKey)
     }
 
@@ -66,12 +75,12 @@ class SocketProcessor(private val nioWrapper: INIOWrapper, private val incomingB
         if (bytesRead < 0) {
             nioWrapper.close(key.original)
 
-            delegate.onDisconnected(id)
+            closedSubject.onNext(Closed(id = id))
 
             return
         }
 
-        delegate.onRead(id, buffer = incomingBuffer, bytesRead = bytesRead)
+        readSubject.onNext(Read(id = id, buffer = incomingBuffer, bytes = bytesRead))
     }
 
 }

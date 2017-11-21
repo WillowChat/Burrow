@@ -1,6 +1,6 @@
 package chat.willow.burrow.irc.handler
 
-import chat.willow.burrow.connection.ConnectionId
+import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.burrow.kale.BurrowHandler
 import chat.willow.burrow.state.IClientTracker

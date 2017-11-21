@@ -16,16 +16,14 @@ class SocketProcessorTests {
     private lateinit var sut: SocketProcessor
     private lateinit var mockNioWrapper: INIOWrapper
     private lateinit var mockIncomingBuffer: ByteBuffer
-    private lateinit var mockDelegate: ISocketProcessorDelegate
     private lateinit var mockInterruptedChecker: IInterruptedChecker
 
     @Before fun setUp() {
         mockNioWrapper = mock()
         mockIncomingBuffer = mock()
-        mockDelegate = mock()
         mockInterruptedChecker = mock()
 
-        sut = SocketProcessor(mockNioWrapper, mockIncomingBuffer, mockDelegate, mockInterruptedChecker)
+        sut = SocketProcessor(mockNioWrapper, mockIncomingBuffer, mockInterruptedChecker)
     }
 
     @Test fun `when run, tells nio wrapper to clear selected keys`() {
@@ -62,7 +60,7 @@ class SocketProcessorTests {
         sut.run()
 
         verify(mockNioWrapper).accept(originalKey)
-        verify(mockDelegate).onAccepted(mockSocket)
+//        verify(mockDelegate).onAccepted(mockSocket)
     }
 
     @Test fun `when run, and there is an acceptable key, attaches id from delegate`() {
@@ -84,12 +82,9 @@ class SocketProcessorTests {
         whenever(mockNioWrapper.accept(any()))
                 .thenReturn(mockSocket to mockSelectionKey)
 
-        whenever(mockDelegate.onAccepted(any()))
-                .thenReturn(1)
-
         sut.run()
 
-        verify(mockNioWrapper).attach(1, mockSelectionKey)
+        verify(mockNioWrapper).attach(0, mockSelectionKey)
     }
 
     @Test fun `when run, and there is a readable key, gets nio wrapper to read in to buffer`() {
@@ -131,7 +126,7 @@ class SocketProcessorTests {
 
         sut.run()
 
-        verify(mockDelegate).onRead(1, mockIncomingBuffer, 10)
+//        verify(mockDelegate).onRead(1, mockIncomingBuffer, 10)
     }
 
     @Test fun `when run, and there is a readable key, and less than 0 bytes to read, tells nio to close key`() {
@@ -173,7 +168,7 @@ class SocketProcessorTests {
 
         sut.run()
 
-        verify(mockDelegate).onDisconnected(2)
+//        verify(mockDelegate).onDisconnected(2)
     }
 
 }

@@ -1,6 +1,6 @@
 package chat.willow.burrow.kale
 
-import chat.willow.burrow.connection.ConnectionId
+import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.*
 import chat.willow.kale.irc.message.IMessageParser

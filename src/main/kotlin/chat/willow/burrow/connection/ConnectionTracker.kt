@@ -1,31 +1,30 @@
 package chat.willow.burrow.connection
 
+import chat.willow.burrow.Burrow
 import chat.willow.burrow.connection.line.ILineAccumulator
-import chat.willow.burrow.connection.line.ILineAccumulatorListener
-import chat.willow.burrow.connection.line.ILineAccumulatorPool
+import chat.willow.burrow.connection.line.LineAccumulator
+import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.burrow.kale.IBurrowKaleWrapper
 import chat.willow.burrow.connection.network.INetworkSocket
-import chat.willow.burrow.state.IClientTracker
+import chat.willow.burrow.connection.network.ISocketProcessor
+import chat.willow.burrow.connection.network.SocketProcessor
 import chat.willow.kale.irc.message.IrcMessageSerialiser
 import io.reactivex.Observable
+import io.reactivex.subjects.PublishSubject
+import java.net.InetAddress
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
-
-typealias ConnectionId = Int
 
 interface IConnectionTracker {
 
-    fun track(socket: INetworkSocket, listener: ILineAccumulatorListener): BurrowConnection
-    fun drop(id: ConnectionId)
     fun <M : Any>send(id: ConnectionId, message: M)
 
     operator fun get(id: ConnectionId): BurrowConnection?
-    operator fun minusAssign(id: ConnectionId)
 
 }
 
-data class BurrowConnection(val id: ConnectionId, val socket: INetworkSocket, val accumulator: ILineAccumulator) {
+// todo: make most of this internal
+data class BurrowConnection(val id: ConnectionId, val host: String, val socket: INetworkSocket, val accumulator: ILineAccumulator) {
 
     override fun toString(): String {
         return id.toString()
@@ -33,46 +32,52 @@ data class BurrowConnection(val id: ConnectionId, val socket: INetworkSocket, va
 
 }
 
-class ConnectionTracker(private val lineAccumulatorPool: ILineAccumulatorPool, var kaleWrapper: IBurrowKaleWrapper? = null, var clientTracker: IClientTracker? = null): IConnectionTracker {
+class ConnectionTracker(socketProcessor: ISocketProcessor, val bufferSize: Int, var kaleWrapper: IBurrowKaleWrapper? = null): IConnectionTracker {
 
     private val LOGGER = loggerFor<ConnectionTracker>()
 
-    private var nextConnectionId = AtomicInteger(0)
     private val connections: MutableMap<ConnectionId, BurrowConnection> = ConcurrentHashMap()
 
-    override fun track(socket: INetworkSocket, listener: ILineAccumulatorListener): BurrowConnection {
-        val id = nextConnectionId.getAndIncrement()
-        val accumulator = lineAccumulatorPool.next(id, listener)
+    data class Tracked(val connection: BurrowConnection)
+    val tracked: Observable<Tracked>
+    private val trackedSubject = PublishSubject.create<Tracked>()
 
-        val connection = BurrowConnection(id, socket = socket, accumulator = accumulator)
+    init {
+        tracked = trackedSubject
 
-        connections[id] = connection
+        socketProcessor.accepted
+                .map(this::track)
+                .subscribe(trackedSubject)
 
-        // todo: look up their address, with a timer, and defer connection until that's done
-        clientTracker?.trackNewClient(id, host = socket.socket.inetAddress.toString())
+        socketProcessor.read
+                .map { Pair(it.id, LineAccumulator.Input(bytes = it.buffer.array(), read = it.bytes)) }
+                .subscribe({
+                    connections[it.first]?.accumulator?.input?.onNext(it.second)
+                })
 
-        return connection
+        // todo: listen for socket drops
     }
 
-    override fun drop(id: ConnectionId) {
-        connections.remove(id)
+    private fun track(accepted: SocketProcessor.Accepted): Tracked {
+        val address = accepted.socket.socket.inetAddress.canonicalHostName
+
+        val accumulator = LineAccumulator(bufferSize = bufferSize)
+        accumulator.lines.subscribe({ kaleWrapper?.process(it, accepted.id) })
+
+        val connection = BurrowConnection(accepted.id, host = address, socket = accepted.socket, accumulator = accumulator)
+
+        connections[accepted.id] = connection
+
+        LOGGER.info("tracked connection $connection")
+
+        return Tracked(connection = connection)
     }
 
     override fun get(id: ConnectionId): BurrowConnection? {
         return connections[id]
     }
 
-    override fun minusAssign(id: ConnectionId) {
-        drop(id)
-    }
-
     override fun <M : Any> send(id: ConnectionId, message: M) {
-        val socket = connections[id]?.socket
-        if (socket == null) {
-            LOGGER.warn("tried to send something to missing client $id")
-            return
-        }
-
         val ircMessage = kaleWrapper?.serialise(message)
         if (ircMessage == null) {
             LOGGER.warn("failed to serialise message: $message")
@@ -87,7 +92,18 @@ class ConnectionTracker(private val lineAccumulatorPool: ILineAccumulatorPool, v
 
         LOGGER.info("$id ~ << $line")
 
-        socket.sendLine(line)
+        send(id, line)
+    }
+
+    private fun send(id: ConnectionId, line: String) {
+        val socket = connections[id]?.socket
+        if (socket == null) {
+            LOGGER.warn("tried to send something to missing client $id")
+            return
+        }
+
+        val byteBuffer = Burrow.Server.UTF_8.encode(line + "\r\n")
+        socket.write(byteBuffer)
     }
 
 }

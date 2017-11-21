@@ -1,14 +1,10 @@
 package chat.willow.burrow
 
-import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.connection.ConnectionTracker
 import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.connection.line.IIrcMessageProcessor
-import chat.willow.burrow.connection.line.ILineAccumulatorListener
-import chat.willow.burrow.connection.line.LineAccumulatorPool
 import chat.willow.burrow.connection.line.LineProcessor
 import chat.willow.burrow.irc.handler.*
-import chat.willow.burrow.helper.IInterruptedChecker
 import chat.willow.burrow.helper.ThreadInterruptedChecker
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.burrow.kale.*
@@ -38,21 +34,23 @@ object Burrow {
         LOGGER.info("Starting...")
         LOGGER.info("Support the development of this daemon through Patreon https://crrt.io/patreon 🎉")
 
-        val lineAccumulatorPool = LineAccumulatorPool(bufferSize = Server.MAX_LINE_LENGTH)
+        val selectorFactory = SelectorFactory
+        val nioWrapper = NIOWrapper(selectorFactory)
+        val interruptedChecker = ThreadInterruptedChecker
 
-        val connectionTracker = ConnectionTracker(lineAccumulatorPool)
+        val buffer = ByteBuffer.allocate(Server.MAX_LINE_LENGTH)
+        val socketProcessor = SocketProcessor(nioWrapper, buffer, interruptedChecker)
+        val connectionTracker = ConnectionTracker(socketProcessor, bufferSize = Server.MAX_LINE_LENGTH)
         val clientTracker = ClientTracker(connectionTracker)
         val kaleWrapper = createKaleWrapper(BurrowRouter(), KaleMetadataFactory(KaleTagRouter()), clientTracker, connectionTracker)
         connectionTracker.kaleWrapper = kaleWrapper
-        connectionTracker.clientTracker = clientTracker
 
-        val selectorFactory = SelectorFactory
-        val nioWrapper = NIOWrapper(selectorFactory)
-        val socketProcessorFactory = SocketProcessorFactory
-        val interruptedChecker = ThreadInterruptedChecker
+        connectionTracker.tracked
+                .map { it.connection }
+                .subscribe(clientTracker.track)
 
         val lineProcessor = LineProcessor(interruptedChecker, kaleWrapper)
-        val server = Server(nioWrapper, socketProcessorFactory, connectionTracker, lineProcessor, interruptedChecker)
+        val server = Server(nioWrapper, socketProcessor, lineProcessor)
 
         server.start()
 
@@ -80,6 +78,7 @@ object Burrow {
         router.register(Rpl001MessageType::class, Rpl001Message.Serialiser)
         router.register(Rpl353Message.Message::class, Rpl353Message.Message.Serialiser)
         router.register(PingMessage.Command::class, PingMessage.Command.Serialiser)
+        router.register(PongMessage.Message::class, PongMessage.Message.Serialiser)
 
         router.register(RawMessage.Line::class, RawMessage.Line.Serialiser)
 
@@ -87,10 +86,8 @@ object Burrow {
     }
 
     class Server(private val nioWrapper: INIOWrapper,
-                 private val socketProcessorFactory: ISocketProcessorFactory,
-                 private val connectionTracker: IConnectionTracker,
-                 private val lineProcessor: IIrcMessageProcessor,
-                 private val interruptedChecker: IInterruptedChecker) : ISocketProcessorDelegate, ILineAccumulatorListener {
+                 private val socketProcessor: ISocketProcessor,
+                 private val lineProcessor: IIrcMessageProcessor) {
 
         companion object {
             val BUFFER_SIZE = 8192
@@ -99,12 +96,9 @@ object Burrow {
         }
 
         fun start() {
-            // todo: implicitly resolves hostname
             val socketAddress = InetSocketAddress("0.0.0.0", 6667)
 
             nioWrapper.setUp(socketAddress)
-
-            val socketProcessor = socketProcessorFactory.create(nioWrapper, buffer = ByteBuffer.allocate(MAX_LINE_LENGTH), delegate = this, interruptedChecker = interruptedChecker)
 
             val lineProcessorThread = thread(name = "message processor", start = false) { lineProcessor.run() }
             val socketProcessorThread = thread(name = "socket processor", start = false) { socketProcessor.run() }
@@ -117,76 +111,6 @@ object Burrow {
             socketProcessorThread.join()
         }
 
-        // ISocketProcessorDelegate
-
-        override fun onAccepted(socket: INetworkSocket): ConnectionId {
-            val client = connectionTracker.track(socket, listener = this)
-
-            LOGGER.info("accepted connection $client")
-
-            return client.id
-        }
-
-        override fun onDisconnected(id: ConnectionId) {
-            val client = connectionTracker[id]
-            if (client == null) {
-                LOGGER.warn("disconnected connection that we're not tracking? $id")
-                return
-            }
-
-            connectionTracker -= client.id
-
-            LOGGER.info("disconnected $client")
-        }
-
-        override fun onRead(id: ConnectionId, buffer: ByteBuffer, bytesRead: Int) {
-            val client = connectionTracker[id]
-            if (client == null) {
-                LOGGER.warn("read bytes from a connection we're not tracking: $id")
-                return
-            }
-
-            LOGGER.info("connection $client sent $bytesRead bytes, accumulating...")
-
-            client.accumulator.add(buffer.array(), bytesRead)
-        }
-
-        // ILineAccumulatorListener
-
-        override fun onBufferOverran(id: ConnectionId) {
-            LOGGER.info("connection $id onBufferOverran, disconnecting them")
-            disconnect(id)
-        }
-
-        override fun onLineAccumulated(id: ConnectionId, line: String) {
-            val client = connectionTracker[id]
-            if (client == null) {
-                LOGGER.warn("accumulated a line for a connection we don't know about: $id - $line")
-                return
-            }
-
-            LOGGER.info("connection $client sent line: $line")
-
-            // todo: client based throttling / filtering
-            lineProcessor += (client to line)
-        }
-
-        private fun disconnect(id: ConnectionId) {
-            val client = connectionTracker[id]
-            if (client == null) {
-                LOGGER.warn("couldn't disconnect connection because we're not tracking them $id")
-                return
-            }
-
-            if (!client.socket.isConnected) {
-                LOGGER.warn("tried to disconnect connection whose socket isn't connected, untracking them anyway $id")
-                connectionTracker -= client.id
-                return
-            }
-
-            client.socket.close()
-            connectionTracker -= client.id
-        }
     }
 
 }
