@@ -21,6 +21,9 @@ interface IConnectionTracker {
 
     operator fun get(id: ConnectionId): BurrowConnection?
 
+    val tracked: Observable<ConnectionTracker.Tracked>
+    val dropped: Observable<ConnectionTracker.Dropped>
+
 }
 
 // todo: make most of this internal
@@ -39,11 +42,16 @@ class ConnectionTracker(socketProcessor: ISocketProcessor, val bufferSize: Int, 
     private val connections: MutableMap<ConnectionId, BurrowConnection> = ConcurrentHashMap()
 
     data class Tracked(val connection: BurrowConnection)
-    val tracked: Observable<Tracked>
+    override val tracked: Observable<Tracked>
     private val trackedSubject = PublishSubject.create<Tracked>()
+
+    data class Dropped(val id: ConnectionId)
+    override val dropped: Observable<Dropped>
+    private val droppedSubject = PublishSubject.create<Dropped>()
 
     init {
         tracked = trackedSubject
+        dropped = droppedSubject
 
         socketProcessor.accepted
                 .map(this::track)
@@ -55,14 +63,23 @@ class ConnectionTracker(socketProcessor: ISocketProcessor, val bufferSize: Int, 
                     connections[it.first]?.accumulator?.input?.onNext(it.second)
                 })
 
-        // todo: listen for socket drops
+        // todo: propagate to client tracker
+        socketProcessor.closed
+                .subscribe {
+                    LOGGER.info("connection ${it.id} closed - dropping")
+
+                    connections.remove(it.id)
+                }
+
+        socketProcessor.closed
+                .map { Dropped(id = it.id) }
+                .subscribe(dropped)
     }
 
     private fun track(accepted: SocketProcessor.Accepted): Tracked {
         val address = accepted.socket.socket.inetAddress.canonicalHostName
 
         val accumulator = LineAccumulator(bufferSize = bufferSize)
-        accumulator.lines.subscribe({ kaleWrapper?.process(it, accepted.id) })
 
         val connection = BurrowConnection(accepted.id, host = address, socket = accepted.socket, accumulator = accumulator)
 

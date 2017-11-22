@@ -15,16 +15,6 @@ class PrivMsgHandler(private val connectionTracker: IConnectionTracker, private 
 
     override fun handle(message: PrivMsgMessage.Command, metadata: IMetadataStore, id: ConnectionId) {
         LOGGER.info("$id ~ handling PrivMsg: $message")
-
-        val client = clientTracker.connectedStateOf(id)
-        if (client == null) {
-            LOGGER.warn("got a privmsg from a client we aren't tracking?")
-            return
-        }
-
-        if (message.message == "hello burrow") {
-            connectionTracker.send(id, PrivMsgMessage.Message(source = prefix("burrow"), target = message.target, message = "hello, ${client.prefix.nick} ✨"))
-        }
     }
 
     private fun channelNameIsValid(name: String): Boolean {

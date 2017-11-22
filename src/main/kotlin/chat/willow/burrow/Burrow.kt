@@ -2,8 +2,6 @@ package chat.willow.burrow
 
 import chat.willow.burrow.connection.ConnectionTracker
 import chat.willow.burrow.connection.IConnectionTracker
-import chat.willow.burrow.connection.line.IIrcMessageProcessor
-import chat.willow.burrow.connection.line.LineProcessor
 import chat.willow.burrow.irc.handler.*
 import chat.willow.burrow.helper.ThreadInterruptedChecker
 import chat.willow.burrow.helper.loggerFor
@@ -41,7 +39,7 @@ object Burrow {
         val buffer = ByteBuffer.allocate(Server.MAX_LINE_LENGTH)
         val socketProcessor = SocketProcessor(nioWrapper, buffer, interruptedChecker)
         val connectionTracker = ConnectionTracker(socketProcessor, bufferSize = Server.MAX_LINE_LENGTH)
-        val clientTracker = ClientTracker(connectionTracker)
+        val clientTracker = ClientTracker(connections = connectionTracker)
         val kaleWrapper = createKaleWrapper(BurrowRouter(), KaleMetadataFactory(KaleTagRouter()), clientTracker, connectionTracker)
         connectionTracker.kaleWrapper = kaleWrapper
 
@@ -49,8 +47,11 @@ object Burrow {
                 .map { it.connection }
                 .subscribe(clientTracker.track)
 
-        val lineProcessor = LineProcessor(interruptedChecker, kaleWrapper)
-        val server = Server(nioWrapper, socketProcessor, lineProcessor)
+        connectionTracker.dropped
+                .map { it.id }
+                .subscribe(clientTracker.drop)
+
+        val server = Server(nioWrapper, socketProcessor)
 
         server.start()
 
@@ -86,8 +87,7 @@ object Burrow {
     }
 
     class Server(private val nioWrapper: INIOWrapper,
-                 private val socketProcessor: ISocketProcessor,
-                 private val lineProcessor: IIrcMessageProcessor) {
+                 private val socketProcessor: ISocketProcessor) {
 
         companion object {
             val BUFFER_SIZE = 8192
@@ -100,14 +100,9 @@ object Burrow {
 
             nioWrapper.setUp(socketAddress)
 
-            val lineProcessorThread = thread(name = "message processor", start = false) { lineProcessor.run() }
             val socketProcessorThread = thread(name = "socket processor", start = false) { socketProcessor.run() }
 
-            lineProcessorThread.start()
             socketProcessorThread.start()
-
-            // TODO: bail either thread out if either end
-            lineProcessorThread.join()
             socketProcessorThread.join()
         }
 
