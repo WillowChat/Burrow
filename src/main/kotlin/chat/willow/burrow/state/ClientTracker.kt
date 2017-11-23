@@ -67,13 +67,9 @@ class RegistrationUseCase(private val connection: BurrowConnection, messages: Ob
                 .subscribe(registeredSubject)
     }
 
-    private fun validateUser(user: String): Boolean {
-        return !user.isEmpty() && user.length <= MAX_USER_LENGTH && alphanumeric.test(user)
-    }
+    private fun validateUser(user: String): Boolean = !user.isEmpty() && user.length <= MAX_USER_LENGTH && alphanumeric.test(user)
 
-    private fun validateNick(nick: String): Boolean {
-        return !nick.isEmpty() && nick.length <= MAX_NICK_LENGTH && alphanumeric.test(nick)
-    }
+    private fun validateNick(nick: String): Boolean = !nick.isEmpty() && nick.length <= MAX_NICK_LENGTH && alphanumeric.test(nick)
 
 }
 
@@ -102,10 +98,7 @@ class ClientTracker(val connections: IConnectionTracker): IClientTracker {
             throw RuntimeException("Tried to track connection $connection with duplicate ID")
         }
 
-        val regClient = RegisteringClient(connection)
-        registeringClients += connection.id to regClient
-
-        // todo: start a registration timer for the client
+        registeringClients += connection.id to RegisteringClient(connection)
 
         val messages = connection.accumulator.lines
                 .observeOn(lineScheduler)
@@ -116,23 +109,32 @@ class ClientTracker(val connections: IConnectionTracker): IClientTracker {
         RegistrationUseCase(connection, messages, timeoutMs = 5 * 1000)
                 .registered
                 .subscribeBy(onNext = {
-                    val client = ConnectedClient(connection, prefix = it.prefix)
-
-                    registeringClients -= connection.id
-                    connectedClients += connection.id to client
-
-                    connections.send(connection.id, Rpl001MessageType(source = "bunnies", target = client.prefix.nick, contents = "welcome to bunnies"))
-
-                    LOGGER.info("connection $connection registered: $it")
+                    registered(connection, it)
                 },
                 onError = {
-                    LOGGER.info("connection failed to register, dropping ${connection.id} $it")
-                    drop(connection.id)
-                    connection.socket.close()
+                    registrationFailed(connection, it)
                 })
 
         LOGGER.info("tracked registering client $connection")
     }
+
+    private fun registrationFailed(connection: BurrowConnection, error: Throwable) {
+        LOGGER.info("connection failed to register, dropping ${connection.id} $error")
+        drop(connection.id)
+        connection.socket.close()
+    }
+
+    private fun registered(connection: BurrowConnection, details: RegistrationUseCase.Registered) {
+        val client = ConnectedClient(connection, prefix = details.prefix)
+
+        registeringClients -= connection.id
+        connectedClients += connection.id to client
+
+        connections.send(connection.id, Rpl001MessageType(source = "bunnies", target = client.prefix.nick, contents = "welcome to bunnies"))
+
+        LOGGER.info("connection $connection registered: $details")
+    }
+
 
     private fun drop(id: ConnectionId) {
         LOGGER.info("dropping $id")
