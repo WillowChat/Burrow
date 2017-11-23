@@ -9,20 +9,71 @@ import chat.willow.kale.irc.message.IrcMessage
 import chat.willow.kale.irc.message.IrcMessageParser
 import chat.willow.kale.irc.message.rfc1459.NickMessage
 import chat.willow.kale.irc.message.rfc1459.UserMessage
-import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001Message
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001MessageType
 import chat.willow.kale.irc.prefix.Prefix
 import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.rxkotlin.Observables
+import io.reactivex.rxkotlin.subscribeBy
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
+import java.util.regex.Pattern
 
 interface IClientTracker {
 
     val track: Observer<BurrowConnection>
     val drop: Observer<ConnectionId>
+
+}
+
+class RegistrationUseCase(private val connection: BurrowConnection, messages: Observable<IrcMessage>, timeoutMs: Long) {
+
+    val registered: Observable<Registered>
+    private val registeredSubject = PublishSubject.create<Registered>()
+    data class Registered(val prefix: Prefix, val caps: Set<String>)
+
+    private val MAX_USER_LENGTH = 9
+    private val MAX_NICK_LENGTH = 30 // todo: isupport
+    private val alphanumeric = Pattern.compile("^[a-zA-Z0-9]*$").asPredicate()
+
+    init {
+        registered = registeredSubject
+
+        val users = messages
+                .filter(UserMessage.command, UserMessage.Command.Parser)
+                .map { it.username to validateUser(it.username) }
+                .filter { it.second }
+                .map { it.first }
+
+        val nicks = messages
+                .filter(NickMessage.command, NickMessage.Command.Parser)
+                .map { it.nickname to validateNick(it.nickname) }
+                .filter { it.second }
+                .map { it.first }
+
+        val userNicks = Observables.combineLatest(users, nicks)
+
+        userNicks
+                .timeout(timeoutMs, TimeUnit.MILLISECONDS)
+                .map {
+                    val user = it.first
+                    val nick = it.second
+
+                    Registered(prefix = Prefix(nick = nick, user = user, host = connection.host), caps = setOf())
+                }
+                .take(1)
+                .subscribe(registeredSubject)
+    }
+
+    private fun validateUser(user: String): Boolean {
+        return !user.isEmpty() && user.length <= MAX_USER_LENGTH && alphanumeric.test(user)
+    }
+
+    private fun validateNick(nick: String): Boolean {
+        return !nick.isEmpty() && nick.length <= MAX_NICK_LENGTH && alphanumeric.test(nick)
+    }
 
 }
 
@@ -62,54 +113,25 @@ class ClientTracker(val connections: IConnectionTracker): IClientTracker {
                 .filterNotNull()
                 .share()
 
-        val users = messages.filter(UserMessage.command, UserMessage.Command.Parser)
-        val nicks = messages.filter(NickMessage.command, NickMessage.Command.Parser)
+        RegistrationUseCase(connection, messages, timeoutMs = 5 * 1000)
+                .registered
+                .subscribeBy(onNext = {
+                    val client = ConnectedClient(connection, prefix = it.prefix)
 
-        val userNicks = Observables.combineLatest(users, nicks)
+                    registeringClients -= connection.id
+                    connectedClients += connection.id to client
 
-        userNicks.take(1).subscribe {
-            val user = it.first
-            val nick = it.second
+                    connections.send(connection.id, Rpl001MessageType(source = "bunnies", target = client.prefix.nick, contents = "welcome to bunnies"))
 
-            // todo: verify stuff
-
-            val client = ConnectedClient(connection, prefix = Prefix(nick = nick.nickname, user = user.username, host = connection.host))
-
-            registeringClients -= connection.id
-            connectedClients += connection.id to client
-
-            connections.send(connection.id, Rpl001MessageType(source = "bunnies", target = client.prefix.nick, contents = "welcome to bunnies"))
-
-            LOGGER.info("connection $connection registered: $it")
-        }
+                    LOGGER.info("connection $connection registered: $it")
+                },
+                onError = {
+                    LOGGER.info("connection failed to register, dropping ${connection.id} $it")
+                    drop(connection.id)
+                    connection.socket.close()
+                })
 
         LOGGER.info("tracked registering client $connection")
-        messages.subscribe { handle(connection, it) }
-    }
-
-    private fun <T:Any> Observable<IrcMessage>.filter(command: String, parser: IMessageParser<T>): Observable<T> {
-        return this.filter { it.command.equals(command, ignoreCase = true) }
-                .map(parser::parse)
-                .filterNotNull()
-    }
-
-    private fun handle(connection: BurrowConnection, message: IrcMessage) {
-        val id = connection.id
-
-        val isRegistering = lazy { registeringClients.contains(connection.id) }
-        val isConnected = lazy { connectedClients.contains(connection.id) }
-
-        when {
-            isRegistering.value -> {
-                LOGGER.info("(registering) $id ~ >> $message")
-            }
-
-            isConnected.value -> {
-                LOGGER.info("(connected) $id ~ >> $message")
-            }
-
-            else -> throw RuntimeException("handling message for a client that isn't tracked $connection $message")
-        }
     }
 
     private fun drop(id: ConnectionId) {
@@ -119,6 +141,12 @@ class ClientTracker(val connections: IConnectionTracker): IClientTracker {
         connectedClients -= id
     }
 
+}
+
+private fun <T:Any> Observable<IrcMessage>.filter(command: String, parser: IMessageParser<T>): Observable<T> {
+    return this.filter { it.command.equals(command, ignoreCase = true) }
+            .map(parser::parse)
+            .filterNotNull()
 }
 
 fun <T : Any> Observable<out T?>.filterNotNull(): Observable<T> {
