@@ -102,11 +102,24 @@ class ClientTracker(val connections: IConnectionTracker): IClientTracker {
 
         val messages = connection.accumulator.lines
                 .observeOn(lineScheduler)
-                .map(IrcMessageParser::parse)
-                .filterNotNull()
+                .map { it to IrcMessageParser.parse(it) }
                 .share()
 
-        RegistrationUseCase(connection, messages, timeoutMs = 5 * 1000)
+        val failedMessages = messages
+                .filter { it.second == null }
+                .map { it.first }
+
+        failedMessages
+                .subscribe { LOGGER.warn("${connection.id} ~ (FAILED) >> $it") }
+
+        val parsedMessages = messages
+                .map { it.second }
+                .filterNotNull()
+
+        parsedMessages
+                .subscribe { LOGGER.info("${connection.id} ~ >> $it") }
+
+        RegistrationUseCase(connection, parsedMessages, timeoutMs = 5 * 1000)
                 .registered
                 .subscribeBy(onNext = {
                     registered(connection, it)
@@ -121,6 +134,7 @@ class ClientTracker(val connections: IConnectionTracker): IClientTracker {
     private fun registrationFailed(connection: BurrowConnection, error: Throwable) {
         LOGGER.info("connection failed to register, dropping ${connection.id} $error")
         drop(connection.id)
+
         connection.socket.close()
     }
 
