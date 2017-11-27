@@ -17,7 +17,7 @@ val kotlinVersion by project
 val projectTitle = "Burrow"
 
 buildscript {
-    val buildscriptKotlinVersion = "1.1.51"
+    val buildscriptKotlinVersion = "1.1.61"
 
     repositories {
         gradleScriptKotlin()
@@ -38,7 +38,7 @@ apply {
 }
 
 plugins {
-    kotlin("jvm") version "1.1.60"
+    kotlin("jvm") version "1.1.61"
 }
 
 jacoco {

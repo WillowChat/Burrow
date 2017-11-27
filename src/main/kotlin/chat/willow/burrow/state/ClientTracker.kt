@@ -4,10 +4,14 @@ import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.helper.loggerFor
+import chat.willow.kale.IKale
 import chat.willow.kale.irc.message.IMessageParser
 import chat.willow.kale.irc.message.IrcMessage
 import chat.willow.kale.irc.message.IrcMessageParser
+import chat.willow.kale.irc.message.extension.cap.CapMessage
 import chat.willow.kale.irc.message.rfc1459.NickMessage
+import chat.willow.kale.irc.message.rfc1459.PingMessage
+import chat.willow.kale.irc.message.rfc1459.PongMessage
 import chat.willow.kale.irc.message.rfc1459.UserMessage
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001MessageType
 import chat.willow.kale.irc.prefix.Prefix
@@ -28,7 +32,9 @@ interface IClientTracker {
 
 }
 
-class RegistrationUseCase(private val connection: BurrowConnection, messages: Observable<IrcMessage>, timeoutMs: Long) {
+class RegistrationUseCase(private val connection: BurrowConnection, kale: IKale, timeoutMs: Long) {
+
+    private val LOGGER = loggerFor<RegistrationUseCase>()
 
     val registered: Observable<Registered>
     private val registeredSubject = PublishSubject.create<Registered>()
@@ -41,17 +47,12 @@ class RegistrationUseCase(private val connection: BurrowConnection, messages: Ob
     init {
         registered = registeredSubject
 
-        val users = messages
-                .filter(UserMessage.command, UserMessage.Command.Parser)
-                .map { it.username to validateUser(it.username) }
-                .filter { it.second }
-                .map { it.first }
+        val users = kale.observe(UserMessage.Command.Descriptor)
+        val nicks = kale.observe(NickMessage.Command.Descriptor)
 
-        val nicks = messages
-                .filter(NickMessage.command, NickMessage.Command.Parser)
-                .map { it.nickname to validateNick(it.nickname) }
-                .filter { it.second }
-                .map { it.first }
+        // cap req or cap ls starter means they're starting cap negotiation
+        kale.observe(CapMessage.Ls.Command.Descriptor)
+                .subscribe { LOGGER.info("$it")}
 
         val userNicks = Observables.combineLatest(users, nicks)
 
@@ -61,7 +62,7 @@ class RegistrationUseCase(private val connection: BurrowConnection, messages: Ob
                     val user = it.first
                     val nick = it.second
 
-                    Registered(prefix = Prefix(nick = nick, user = user, host = connection.host), caps = setOf())
+                    Registered(prefix = Prefix(nick = nick.message.nickname, user = user.message.username, host = connection.host), caps = setOf())
                 }
                 .take(1)
                 .subscribe(registeredSubject)
@@ -73,7 +74,7 @@ class RegistrationUseCase(private val connection: BurrowConnection, messages: Ob
 
 }
 
-class ClientTracker(val connections: IConnectionTracker): IClientTracker {
+class ClientTracker(val connections: IConnectionTracker, val kale: IKale): IClientTracker {
 
     private val LOGGER = loggerFor<ClientTracker>()
 
@@ -100,26 +101,11 @@ class ClientTracker(val connections: IConnectionTracker): IClientTracker {
 
         registeringClients += connection.id to RegisteringClient(connection)
 
-        val messages = connection.accumulator.lines
+        connection.accumulator.lines
                 .observeOn(lineScheduler)
-                .map { it to IrcMessageParser.parse(it) }
-                .share()
+                .subscribe(kale.lines)
 
-        val failedMessages = messages
-                .filter { it.second == null }
-                .map { it.first }
-
-        failedMessages
-                .subscribe { LOGGER.warn("${connection.id} ~ (FAILED) >> $it") }
-
-        val parsedMessages = messages
-                .map { it.second }
-                .filterNotNull()
-
-        parsedMessages
-                .subscribe { LOGGER.info("${connection.id} ~ >> $it") }
-
-        RegistrationUseCase(connection, parsedMessages, timeoutMs = 5 * 1000)
+        RegistrationUseCase(connection, kale, timeoutMs = 5 * 1000)
                 .registered
                 .subscribeBy(onNext = {
                     registered(connection, it)
@@ -127,6 +113,10 @@ class ClientTracker(val connections: IConnectionTracker): IClientTracker {
                 onError = {
                     registrationFailed(connection, it)
                 })
+
+        kale.observe(PingMessage.Command.Descriptor)
+                .throttleFirst(5, TimeUnit.SECONDS, Schedulers.trampoline())
+                .subscribe { connections.send(connection.id, PongMessage.Message(token = it.message.token)) }
 
         LOGGER.info("tracked registering client $connection")
     }

@@ -5,10 +5,11 @@ import chat.willow.burrow.connection.line.ILineAccumulator
 import chat.willow.burrow.connection.line.LineAccumulator
 import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.helper.loggerFor
-import chat.willow.burrow.kale.IBurrowKaleWrapper
 import chat.willow.burrow.connection.network.INetworkSocket
 import chat.willow.burrow.connection.network.ISocketProcessor
 import chat.willow.burrow.connection.network.SocketProcessor
+import chat.willow.kale.IKale
+import chat.willow.kale.IKaleRouter
 import chat.willow.kale.irc.message.IrcMessageSerialiser
 import io.reactivex.Observable
 import io.reactivex.subjects.PublishSubject
@@ -35,7 +36,7 @@ data class BurrowConnection(val id: ConnectionId, val host: String, val socket: 
 
 }
 
-class ConnectionTracker(socketProcessor: ISocketProcessor, val bufferSize: Int, var kaleWrapper: IBurrowKaleWrapper? = null): IConnectionTracker {
+class ConnectionTracker(socketProcessor: ISocketProcessor, val bufferSize: Int, var kale: IKale? = null): IConnectionTracker {
 
     private val LOGGER = loggerFor<ConnectionTracker>()
 
@@ -95,7 +96,7 @@ class ConnectionTracker(socketProcessor: ISocketProcessor, val bufferSize: Int, 
     }
 
     override fun <M : Any> send(id: ConnectionId, message: M) {
-        val ircMessage = kaleWrapper?.serialise(message)
+        val ircMessage = kale?.serialise(message)
         if (ircMessage == null) {
             LOGGER.warn("failed to serialise message: $message")
             return

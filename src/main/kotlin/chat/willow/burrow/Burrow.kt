@@ -1,18 +1,11 @@
 package chat.willow.burrow
 
 import chat.willow.burrow.connection.ConnectionTracker
-import chat.willow.burrow.connection.IConnectionTracker
-import chat.willow.burrow.irc.handler.*
 import chat.willow.burrow.helper.ThreadInterruptedChecker
 import chat.willow.burrow.helper.loggerFor
-import chat.willow.burrow.kale.*
 import chat.willow.burrow.connection.network.*
 import chat.willow.burrow.state.ClientTracker
-import chat.willow.burrow.state.IClientTracker
-import chat.willow.kale.IKaleMetadataFactory
-import chat.willow.kale.IKaleRouter
-import chat.willow.kale.KaleMetadataFactory
-import chat.willow.kale.irc.message.extension.cap.CapMessage
+import chat.willow.kale.*
 import chat.willow.kale.irc.message.rfc1459.*
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001Message
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001MessageType
@@ -39,9 +32,9 @@ object Burrow {
         val buffer = ByteBuffer.allocate(Server.MAX_LINE_LENGTH)
         val socketProcessor = SocketProcessor(nioWrapper, buffer, interruptedChecker)
         val connectionTracker = ConnectionTracker(socketProcessor, bufferSize = Server.MAX_LINE_LENGTH)
-        val clientTracker = ClientTracker(connections = connectionTracker)
-        val kaleWrapper = createKaleWrapper(BurrowRouter(), KaleMetadataFactory(KaleTagRouter()), clientTracker, connectionTracker)
-        connectionTracker.kaleWrapper = kaleWrapper
+        val kale = createKale(KaleRouter(), KaleMetadataFactory(KaleTagRouter()))
+        val clientTracker = ClientTracker(connections = connectionTracker, kale = kale)
+        connectionTracker.kale = kale
 
         connectionTracker.tracked
                 .map { it.connection }
@@ -58,22 +51,7 @@ object Burrow {
         LOGGER.info("Ended")
     }
 
-    fun createKaleWrapper(router: IKaleRouter<IBurrowIrcMessageHandler>, metadataFactory: IKaleMetadataFactory, clientTracker: IClientTracker, connectionTracker: IConnectionTracker): IBurrowKaleWrapper {
-        val userHandler = UserHandler(clientTracker)
-        val nickHandler = NickHandler(clientTracker)
-        val capLsHandler = CapLsHandler(clientTracker)
-        val joinHandler = JoinHandler(connectionTracker)
-        val privMsgHandler = PrivMsgHandler(connectionTracker, clientTracker)
-        val pingHandler = PingHandler(connectionTracker)
-        val capHandler = BurrowSubcommandHandler(mapOf(CapMessage.Ls.subcommand to capLsHandler))
-
-        router.register(UserMessage.command, userHandler)
-        router.register(NickMessage.command, nickHandler)
-        router.register(CapMessage.command, capHandler)
-        router.register(JoinMessage.command, joinHandler)
-        router.register(PrivMsgMessage.command, privMsgHandler)
-        router.register(PingMessage.command, pingHandler)
-
+    fun createKale(router: IKaleRouter, metadataFactory: IKaleMetadataFactory): IKale {
         router.register(JoinMessage.Message::class, JoinMessage.Message.Serialiser)
         router.register(PrivMsgMessage.Message::class, PrivMsgMessage.Message.Serialiser)
         router.register(Rpl001MessageType::class, Rpl001Message.Serialiser)
@@ -83,7 +61,7 @@ object Burrow {
 
         router.register(RawMessage.Line::class, RawMessage.Line.Serialiser)
 
-        return BurrowKaleWrapper(router, metadataFactory)
+        return Kale(router, metadataFactory)
     }
 
     class Server(private val nioWrapper: INIOWrapper,
