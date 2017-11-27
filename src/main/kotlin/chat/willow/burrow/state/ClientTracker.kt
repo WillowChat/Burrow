@@ -50,19 +50,25 @@ class RegistrationUseCase(private val connection: BurrowConnection, kale: IKale,
         val users = kale.observe(UserMessage.Command.Descriptor)
         val nicks = kale.observe(NickMessage.Command.Descriptor)
 
+        val validatedUsers = users.map { it.message.username to validateUser(it.message.username) }
+                .filter { it.second }
+
+        val validatedNicks = nicks.map { it.message.nickname to validateNick(it.message.nickname) }
+                .filter { it.second }
+
         // cap req or cap ls starter means they're starting cap negotiation
         kale.observe(CapMessage.Ls.Command.Descriptor)
                 .subscribe { LOGGER.info("$it")}
 
-        val userNicks = Observables.combineLatest(users, nicks)
+        val userNicks = Observables.combineLatest(validatedUsers, validatedNicks)
 
         userNicks
                 .timeout(timeoutMs, TimeUnit.MILLISECONDS)
                 .map {
-                    val user = it.first
-                    val nick = it.second
+                    val user = it.first.first
+                    val nick = it.second.first
 
-                    Registered(prefix = Prefix(nick = nick.message.nickname, user = user.message.username, host = connection.host), caps = setOf())
+                    Registered(prefix = Prefix(nick = nick, user = user, host = connection.host), caps = setOf())
                 }
                 .take(1)
                 .subscribe(registeredSubject)
