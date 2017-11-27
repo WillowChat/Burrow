@@ -52,9 +52,11 @@ class RegistrationUseCase(private val connection: BurrowConnection, kale: IKale,
 
         val validatedUsers = users.map { it.message.username to validateUser(it.message.username) }
                 .filter { it.second }
+                .map { it.first }
 
         val validatedNicks = nicks.map { it.message.nickname to validateNick(it.message.nickname) }
                 .filter { it.second }
+                .map { it.first }
 
         // cap req or cap ls starter means they're starting cap negotiation
         kale.observe(CapMessage.Ls.Command.Descriptor)
@@ -65,8 +67,8 @@ class RegistrationUseCase(private val connection: BurrowConnection, kale: IKale,
         userNicks
                 .timeout(timeoutMs, TimeUnit.MILLISECONDS)
                 .map {
-                    val user = it.first.first
-                    val nick = it.second.first
+                    val user = it.first
+                    val nick = it.second
 
                     Registered(prefix = Prefix(nick = nick, user = user, host = connection.host), caps = setOf())
                 }
