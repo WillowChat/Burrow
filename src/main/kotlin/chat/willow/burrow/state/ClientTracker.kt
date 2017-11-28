@@ -4,7 +4,7 @@ import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.helper.loggerFor
-import chat.willow.kale.IKale
+import chat.willow.kale.*
 import chat.willow.kale.irc.message.IMessageParser
 import chat.willow.kale.irc.message.IrcMessage
 import chat.willow.kale.irc.message.IrcMessageParser
@@ -15,10 +15,12 @@ import chat.willow.kale.irc.message.rfc1459.PongMessage
 import chat.willow.kale.irc.message.rfc1459.UserMessage
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001MessageType
 import chat.willow.kale.irc.prefix.Prefix
+import chat.willow.kale.irc.tag.KaleTagRouter
 import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.rxkotlin.Observables
 import io.reactivex.rxkotlin.subscribeBy
+import io.reactivex.rxkotlin.withLatestFrom
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 import java.util.concurrent.ConcurrentHashMap
@@ -32,7 +34,7 @@ interface IClientTracker {
 
 }
 
-class RegistrationUseCase(private val connection: BurrowConnection, kale: IKale, timeoutMs: Long) {
+class RegistrationUseCase(private val connections: IConnectionTracker, private val connection: BurrowConnection, kale: IKale, timeoutMs: Long) {
 
     private val LOGGER = loggerFor<RegistrationUseCase>()
 
@@ -58,22 +60,76 @@ class RegistrationUseCase(private val connection: BurrowConnection, kale: IKale,
                 .filter { it.second }
                 .map { it.first }
 
-        // cap req or cap ls starter means they're starting cap negotiation
-        kale.observe(CapMessage.Ls.Command.Descriptor)
-                .subscribe { LOGGER.info("$it")}
+        val capEnd = kale.observe(CapMessage.End.Command.Descriptor)
+        val capLs = kale.observe(CapMessage.Ls.Command.Descriptor)
+        val capReq = kale.observe(CapMessage.Req.Command.Descriptor)
 
-        val userNicks = Observables.combineLatest(validatedUsers, validatedNicks)
+        // todo: move
+        val supportedCaps = mapOf("something" to "bunnies", "account-tag" to null, "cap-notify" to null)
 
-        userNicks
-                .timeout(timeoutMs, TimeUnit.MILLISECONDS)
+        capLs
+                .map { CapMessage.Ls.Message(target = "*", caps = supportedCaps, isMultiline = false) }
+                .subscribe { connections.send(connection.id, it) }
+
+        val requestedSupportedCaps = capReq.flatMap {
+            val requestedCaps = it.message.caps.toSet()
+            val allCapsSupported = supportedCaps.keys.containsAll(requestedCaps)
+            return@flatMap if (allCapsSupported) {
+                Observable.just(requestedCaps)
+            } else {
+                Observable.empty()
+            }
+        }
+
+        val requestedUnsupportedCaps = capReq.flatMap {
+            val requestedCaps = it.message.caps.toSet()
+            val allCapsSupported = supportedCaps.keys.containsAll(requestedCaps)
+            return@flatMap if (allCapsSupported) {
+                Observable.empty()
+            } else {
+                Observable.just(requestedCaps)
+            }
+        }
+
+        requestedSupportedCaps
+                .subscribe { connections.send(connection.id, CapMessage.Ack.Message(target = "*", caps = it.toList())) }
+
+        requestedUnsupportedCaps
+                .subscribe { connections.send(connection.id, CapMessage.Nak.Message(target = "*", caps = it.toList())) }
+
+        val negotiatedCaps = requestedSupportedCaps
+                .scan(setOf<String>(), { initial, addition -> initial + addition })
+
+        val startedNegotiatingCaps = Observable.merge(capLs, capReq)
+                .map { true }
+
+        val userAndNick = Observables.combineLatest(validatedUsers, validatedNicks)
+
+        val rfc1459Registration = userAndNick
+                .takeUntil(startedNegotiatingCaps)
                 .map {
                     val user = it.first
                     val nick = it.second
 
                     Registered(prefix = Prefix(nick = nick, user = user, host = connection.host), caps = setOf())
                 }
+
+        val ircv3Registration = capEnd
+                .withLatestFrom(startedNegotiatingCaps) { _, _ -> Unit }
+                .withLatestFrom(Observables.combineLatest(negotiatedCaps, userAndNick)) { _, capsAndUserNicks -> capsAndUserNicks }
+                .map {
+                    val negotiated = it.first
+                    val user = it.second.first
+                    val nick = it.second.second
+
+                    Registered(prefix = Prefix(nick = nick, user = user, host = connection.host), caps = negotiated)
+                }
+
+        Observable.merge(rfc1459Registration, ircv3Registration)
+                .timeout(timeoutMs, TimeUnit.MILLISECONDS)
                 .take(1)
                 .subscribe(registeredSubject)
+
     }
 
     private fun validateUser(user: String): Boolean = !user.isEmpty() && user.length <= MAX_USER_LENGTH && alphanumeric.test(user)
@@ -82,7 +138,7 @@ class RegistrationUseCase(private val connection: BurrowConnection, kale: IKale,
 
 }
 
-class ClientTracker(val connections: IConnectionTracker, val kale: IKale): IClientTracker {
+class ClientTracker(val connections: IConnectionTracker): IClientTracker {
 
     private val LOGGER = loggerFor<ClientTracker>()
 
@@ -91,6 +147,8 @@ class ClientTracker(val connections: IConnectionTracker, val kale: IKale): IClie
 
     data class ConnectedClient(val connection: BurrowConnection, val prefix: Prefix)
     private val connectedClients: MutableMap<ConnectionId, ConnectedClient> = ConcurrentHashMap()
+
+    private val kales: MutableMap<ConnectionId, IKale> = ConcurrentHashMap()
 
     private val lineScheduler = Schedulers.single()
 
@@ -109,20 +167,28 @@ class ClientTracker(val connections: IConnectionTracker, val kale: IKale): IClie
 
         registeringClients += connection.id to RegisteringClient(connection)
 
+        val clientKale = Kale(KaleRouter(), KaleMetadataFactory(KaleTagRouter()))
+        kales += connection.id to clientKale
+
         connection.accumulator.lines
                 .observeOn(lineScheduler)
-                .subscribe(kale.lines)
+                .subscribe(clientKale.lines)
 
-        RegistrationUseCase(connection, kale, timeoutMs = 5 * 1000)
+        clientKale.messages.subscribe { LOGGER.info("${connection.id} ~ >> ${it.message}")}
+
+        RegistrationUseCase(connections, connection, clientKale, timeoutMs = 5 * 1000)
                 .registered
                 .subscribeBy(onNext = {
                     registered(connection, it)
                 },
                 onError = {
                     registrationFailed(connection, it)
+                },
+                onComplete = {
+                    LOGGER.info("registration completed for connection ${connection.id}")
                 })
 
-        kale.observe(PingMessage.Command.Descriptor)
+        clientKale.observe(PingMessage.Command.Descriptor)
                 .throttleFirst(5, TimeUnit.SECONDS, Schedulers.trampoline())
                 .subscribe { connections.send(connection.id, PongMessage.Message(token = it.message.token)) }
 
@@ -147,23 +213,12 @@ class ClientTracker(val connections: IConnectionTracker, val kale: IKale): IClie
         LOGGER.info("connection $connection registered: $details")
     }
 
-
     private fun drop(id: ConnectionId) {
         LOGGER.info("dropping $id")
 
         registeringClients -= id
         connectedClients -= id
+        kales -= id
     }
 
-}
-
-private fun <T:Any> Observable<IrcMessage>.filter(command: String, parser: IMessageParser<T>): Observable<T> {
-    return this.filter { it.command.equals(command, ignoreCase = true) }
-            .map(parser::parse)
-            .filterNotNull()
-}
-
-fun <T : Any> Observable<out T?>.filterNotNull(): Observable<T> {
-    @Suppress("UNCHECKED_CAST")
-    return this.filter { it != null } as Observable<T>
 }

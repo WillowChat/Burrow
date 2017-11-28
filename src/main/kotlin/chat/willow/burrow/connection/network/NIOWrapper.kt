@@ -1,5 +1,6 @@
 package chat.willow.burrow.connection.network
 
+import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.ByteBuffer
@@ -114,7 +115,11 @@ class NIOWrapper(private val selectorFactory: ISelectorFactory): INIOWrapper {
 
         buffer.clear()
 
-        return channel.read(buffer) to id
+        return try {
+            channel.read(buffer) to id
+        } catch (exception: IOException) {
+            -1 to id
+        }
     }
 
     override fun close(key: SelectionKey) {

@@ -6,6 +6,7 @@ import chat.willow.burrow.helper.loggerFor
 import chat.willow.burrow.connection.network.*
 import chat.willow.burrow.state.ClientTracker
 import chat.willow.kale.*
+import chat.willow.kale.irc.message.extension.cap.CapMessage
 import chat.willow.kale.irc.message.rfc1459.*
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001Message
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001MessageType
@@ -33,7 +34,7 @@ object Burrow {
         val socketProcessor = SocketProcessor(nioWrapper, buffer, interruptedChecker)
         val connectionTracker = ConnectionTracker(socketProcessor, bufferSize = Server.MAX_LINE_LENGTH)
         val kale = createKale(KaleRouter(), KaleMetadataFactory(KaleTagRouter()))
-        val clientTracker = ClientTracker(connections = connectionTracker, kale = kale)
+        val clientTracker = ClientTracker(connections = connectionTracker) // todo: kalefactory
         connectionTracker.kale = kale
 
         connectionTracker.tracked
@@ -58,6 +59,9 @@ object Burrow {
         router.register(Rpl353Message.Message::class, Rpl353Message.Message.Serialiser)
         router.register(PingMessage.Command::class, PingMessage.Command.Serialiser)
         router.register(PongMessage.Message::class, PongMessage.Message.Serialiser)
+        router.register(CapMessage.Ls.Message::class, CapMessage.Ls.Message.Serialiser)
+        router.register(CapMessage.Ack.Message::class, CapMessage.Ack.Message.Serialiser)
+        router.register(CapMessage.Nak.Message::class, CapMessage.Nak.Message.Serialiser)
 
         router.register(RawMessage.Line::class, RawMessage.Line.Serialiser)
 
