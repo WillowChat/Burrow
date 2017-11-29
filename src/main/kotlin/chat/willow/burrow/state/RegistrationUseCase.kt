@@ -22,7 +22,7 @@ interface IRegistrationUseCase {
 
 }
 
-class RegistrationUseCase(private val connections: IConnectionTracker, private val connection: BurrowConnection, private val scheduler: Scheduler = Schedulers.trampoline()): IRegistrationUseCase {
+class RegistrationUseCase(private val connections: IConnectionTracker, private val connection: BurrowConnection, private val scheduler: Scheduler = Schedulers.computation()): IRegistrationUseCase {
 
     private val LOGGER = loggerFor<RegistrationUseCase>()
 

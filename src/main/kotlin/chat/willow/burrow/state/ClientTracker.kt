@@ -66,7 +66,7 @@ class ClientTracker(val connections: IConnectionTracker): IClientTracker {
         clientKale.messages.subscribe { LOGGER.info("${connection.id} ~ >> ${it.message}")}
 
         RegistrationUseCase(connections, connection)
-                .track(clientKale)
+                .track(clientKale, caps = mapOf("cap-notify" to null))
                 .subscribeBy(onNext = {
                     registered(connection, it)
                 },
