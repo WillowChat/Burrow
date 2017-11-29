@@ -64,10 +64,6 @@ pipeline {
         }
 
         stage('Deploy') {
-            agent {
-                label 'maven_repo'
-            }
-
             steps {
                 sh "rm -Rv build || true"
                 unstash 'maven_artifacts'
