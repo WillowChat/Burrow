@@ -1,10 +1,9 @@
-package chat.willow.burrow.unit
+package chat.willow.burrow.unit.connection.line
 
 import chat.willow.burrow.Burrow.Server.Companion.UTF_8
 import chat.willow.burrow.connection.line.LineAccumulator
 import org.junit.Before
 import org.junit.Test
-import io.reactivex.subjects.PublishSubject
 
 class LineAccumulatorTests {
 

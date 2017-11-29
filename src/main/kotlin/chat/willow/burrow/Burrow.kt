@@ -1,13 +1,16 @@
 package chat.willow.burrow
 
 import chat.willow.burrow.connection.ConnectionTracker
+import chat.willow.burrow.connection.network.*
 import chat.willow.burrow.helper.ThreadInterruptedChecker
 import chat.willow.burrow.helper.loggerFor
-import chat.willow.burrow.connection.network.*
 import chat.willow.burrow.state.ClientTracker
 import chat.willow.kale.*
 import chat.willow.kale.irc.message.extension.cap.CapMessage
-import chat.willow.kale.irc.message.rfc1459.*
+import chat.willow.kale.irc.message.rfc1459.JoinMessage
+import chat.willow.kale.irc.message.rfc1459.PingMessage
+import chat.willow.kale.irc.message.rfc1459.PongMessage
+import chat.willow.kale.irc.message.rfc1459.PrivMsgMessage
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001Message
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001MessageType
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl353Message

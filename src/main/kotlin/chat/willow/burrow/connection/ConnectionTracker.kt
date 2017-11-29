@@ -4,16 +4,14 @@ import chat.willow.burrow.Burrow
 import chat.willow.burrow.connection.line.ILineAccumulator
 import chat.willow.burrow.connection.line.LineAccumulator
 import chat.willow.burrow.connection.network.ConnectionId
-import chat.willow.burrow.helper.loggerFor
 import chat.willow.burrow.connection.network.INetworkSocket
 import chat.willow.burrow.connection.network.ISocketProcessor
 import chat.willow.burrow.connection.network.SocketProcessor
+import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.IKale
-import chat.willow.kale.IKaleRouter
 import chat.willow.kale.irc.message.IrcMessageSerialiser
 import io.reactivex.Observable
 import io.reactivex.subjects.PublishSubject
-import java.net.InetAddress
 import java.util.concurrent.ConcurrentHashMap
 
 interface IConnectionTracker {
