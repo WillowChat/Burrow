@@ -34,8 +34,8 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
     private val alphanumeric = Pattern.compile("^[a-zA-Z0-9]*$").asPredicate()
 
     override fun track(kale: IKale, caps: Map<String, String?>): Observable<Registered> {
-        val users = kale.observe(UserMessage.Command.Descriptor)
-        val nicks = kale.observe(NickMessage.Command.Descriptor)
+        val users = kale.observe(UserMessage.Command.Descriptor).share()
+        val nicks = kale.observe(NickMessage.Command.Descriptor).share()
 
         val validatedUsers = users.map { it.message.username to validateUser(it.message.username) }
                 .filter { it.second }
@@ -45,9 +45,9 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
                 .filter { it.second }
                 .map { it.first }
 
-        val capEnd = kale.observe(CapMessage.End.Command.Descriptor)
-        val capLs = kale.observe(CapMessage.Ls.Command.Descriptor)
-        val capReq = kale.observe(CapMessage.Req.Command.Descriptor)
+        val capEnd = kale.observe(CapMessage.End.Command.Descriptor).share()
+        val capLs = kale.observe(CapMessage.Ls.Command.Descriptor).share()
+        val capReq = kale.observe(CapMessage.Req.Command.Descriptor).share()
 
         capLs
                 .map { CapMessage.Ls.Message(target = "*", caps = caps, isMultiline = false) }
@@ -61,7 +61,7 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
             } else {
                 Observable.empty()
             }
-        }
+        }.share()
 
         val requestedUnsupportedCaps = capReq.flatMap {
             val requestedCaps = it.message.caps.toSet()
@@ -84,8 +84,9 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
 
         val startedNegotiatingCaps = Observable.merge(capLs, capReq)
                 .map { true }
+                .share()
 
-        val userAndNick = Observables.combineLatest(validatedUsers, validatedNicks)
+        val userAndNick = Observables.combineLatest(validatedUsers, validatedNicks).share()
 
         val rfc1459Registration = userAndNick
                 .takeUntil(startedNegotiatingCaps)
