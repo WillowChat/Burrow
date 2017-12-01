@@ -87,8 +87,7 @@ class ClientTracker(val connections: IConnectionTracker): IClientTracker {
     private fun registrationFailed(connection: BurrowConnection, error: Throwable) {
         LOGGER.info("connection failed to register, dropping ${connection.id} $error")
         drop(connection.id)
-
-        connection.socket.close()
+        connections.drop.onNext(connection.id)
     }
 
     private fun registered(connection: BurrowConnection, details: RegistrationUseCase.Registered) {
@@ -96,6 +95,8 @@ class ClientTracker(val connections: IConnectionTracker): IClientTracker {
 
         registeringClients -= connection.id
         connectedClients += connection.id to client
+
+        // todo: hook up a ClientUseCase?
 
         connections.send(connection.id, Rpl001MessageType(source = "bunnies", target = client.prefix.nick, contents = "welcome to bunnies"))
 

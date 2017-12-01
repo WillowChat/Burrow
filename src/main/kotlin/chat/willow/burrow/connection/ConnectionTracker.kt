@@ -11,6 +11,7 @@ import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.IKale
 import chat.willow.kale.irc.message.IrcMessageSerialiser
 import io.reactivex.Observable
+import io.reactivex.Observer
 import io.reactivex.subjects.PublishSubject
 import java.util.concurrent.ConcurrentHashMap
 
@@ -22,6 +23,8 @@ interface IConnectionTracker {
 
     val tracked: Observable<ConnectionTracker.Tracked>
     val dropped: Observable<ConnectionTracker.Dropped>
+
+    val drop: Observer<ConnectionId>
 
 }
 
@@ -48,9 +51,13 @@ class ConnectionTracker(socketProcessor: ISocketProcessor, val bufferSize: Int, 
     override val dropped: Observable<Dropped>
     private val droppedSubject = PublishSubject.create<Dropped>()
 
+    override val drop: Observer<ConnectionId>
+    private val dropSubject = PublishSubject.create<ConnectionId>()
+
     init {
         tracked = trackedSubject
         dropped = droppedSubject
+        drop = dropSubject
 
         socketProcessor.accepted
                 .map(this::track)
@@ -58,11 +65,11 @@ class ConnectionTracker(socketProcessor: ISocketProcessor, val bufferSize: Int, 
 
         socketProcessor.read
                 .map { Pair(it.id, LineAccumulator.Input(bytes = it.buffer.array(), read = it.bytes)) }
-                .subscribe({
+                .subscribe {
                     connections[it.first]?.accumulator?.input?.onNext(it.second)
-                })
+                }
 
-        // todo: propagate to client tracker
+        // todo: propagate to client tracker?
         socketProcessor.closed
                 .subscribe {
                     LOGGER.info("connection ${it.id} closed - dropping")
@@ -73,6 +80,8 @@ class ConnectionTracker(socketProcessor: ISocketProcessor, val bufferSize: Int, 
         socketProcessor.closed
                 .map { Dropped(id = it.id) }
                 .subscribe(dropped)
+
+        dropSubject.subscribe { connections[it]?.socket?.close() }
     }
 
     private fun track(accepted: SocketProcessor.Accepted): Tracked {
