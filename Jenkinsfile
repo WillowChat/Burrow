@@ -37,9 +37,6 @@ pipeline {
             steps {
                 sh "./gradlew ${env.GRADLE_OPTIONS} clean build test"
                 sh "./gradlew ${env.GRADLE_OPTIONS} generatePomFileForMavenJavaPublication"
-
-                stash includes: 'build/libs/**/*.jar', name: 'build_libs', useDefaultExcludes: false
-                stash includes: 'build/publications/mavenJava/pom-default.xml', name: 'maven_artifacts', useDefaultExcludes: false
             }
         }
 
@@ -50,10 +47,9 @@ pipeline {
 
             steps {
                 sh "./gradlew ${env.GRADLE_OPTIONS} jacocoTestReport"
+                step([$class: 'JacocoPublisher'])
 
                 sh "./codecov.sh -B ${env.BRANCH_NAME}"
-
-                step([$class: 'JacocoPublisher'])
             }
         }
 
@@ -65,11 +61,6 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                sh "rm -Rv build || true"
-                unstash 'maven_artifacts'
-                unstash 'build_libs'
-                sh "ls -lR build"
-
                 sh "find build/libs -name Burrow\\*${env.BUILD_NUMBER}.jar | head -n 1 | xargs -I '{}' mvn install:install-file -Dfile={} -DpomFile=build/publications/mavenJava/pom-default.xml -DlocalRepositoryPath=/var/www/maven.hopper.bunnies.io"
                 sh "find build/libs -name Burrow\\*sources.jar | head -n 1 | xargs -I '{}' mvn install:install-file -Dfile={} -Dclassifier=sources -DpomFile=build/publications/mavenJava/pom-default.xml -DlocalRepositoryPath=/var/www/maven.hopper.bunnies.io"
             }
