@@ -48,7 +48,7 @@ jacoco {
 val jacocoTestReport = project.tasks.getByName("jacocoTestReport")
 
 jacocoTestReport.doFirst {
-    (jacocoTestReport as JacocoReport).classDirectories = fileTree("build/classes/main").apply {
+    (jacocoTestReport as JacocoReport).classDirectories = fileTree("build/classes/kotlin/main").apply {
         // Exclude well known data classes that should contain no logic
         // Remember to change values in codecov.yml too
         exclude("**/*Event.*")
