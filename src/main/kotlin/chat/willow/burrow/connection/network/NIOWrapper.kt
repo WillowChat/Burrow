@@ -14,9 +14,6 @@ class NIOSocketChannelWrapper(private val internalSocket: SocketChannel): INetwo
     override val isConnected: Boolean
         get() = internalSocket.isConnected
 
-    override val socket: Socket
-        get() = internalSocket.socket()
-
     override val host: String
         get() = internalSocket.socket().inetAddress.canonicalHostName
 

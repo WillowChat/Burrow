@@ -1,5 +1,6 @@
 package chat.willow.burrow.unit.connection.network
 
+import chat.willow.burrow.Burrow
 import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.connection.line.ILineAccumulator
 import chat.willow.burrow.connection.ConnectionTracker
@@ -10,6 +11,9 @@ import chat.willow.burrow.connection.network.INetworkSocket
 import chat.willow.burrow.connection.network.ISocketProcessor
 import chat.willow.burrow.connection.network.SocketProcessor
 import chat.willow.kale.IKale
+import chat.willow.kale.irc.message.IrcMessage
+import chat.willow.kale.irc.message.IrcMessageSerialiser
+import chat.willow.kale.irc.message.utility.RawMessage
 import com.nhaarman.mockito_kotlin.any
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.verify
@@ -63,6 +67,35 @@ class ConnectionTrackerTests {
 
         val expected = ConnectionTracker.Tracked(connection)
         observer.assertValue(expected)
+    }
+
+    @Test fun `after tracking a connection, it is gettable`() {
+        val socket: INetworkSocket = mock()
+        whenever(socket.host).thenReturn("somewhere")
+
+        val accumulator: ILineAccumulator = mock()
+        val connection = BurrowConnection(id = 1, host = "somewhere", socket = socket, accumulator = accumulator)
+        whenever(mockConnectionFactory.create(any(), any(), any(), any())).thenReturn(connection)
+        accepted.onNext(SocketProcessor.Accepted(1, socket))
+
+        assertEquals(connection, sut.get(id = 1))
+    }
+
+    @Test fun `after tracking a connection, and sending something to it, the socket is written to`() {
+        val socket = mock<INetworkSocket>()
+        whenever(socket.host).thenReturn("somewhere")
+
+        val accumulator: ILineAccumulator = mock()
+        val connection = BurrowConnection(id = 1, host = "somewhere", socket = socket, accumulator = accumulator)
+        whenever(mockConnectionFactory.create(any(), any(), any(), any())).thenReturn(connection)
+        accepted.onNext(SocketProcessor.Accepted(1, socket))
+
+        val line = "SOME message"
+        whenever(mockKale.serialise(line)).thenReturn(IrcMessage(command = "SOME", parameters = listOf("message")))
+        sut.send(id = 1,  message = line)
+
+        val expectedSocketWrite = Burrow.Server.UTF_8.encode("SOME :message\r\n")
+        verify(socket).write(expectedSocketWrite)
     }
 
     @Test fun `when socket processor reads, the connection's accumulator is given the data`() {
