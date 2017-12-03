@@ -17,6 +17,9 @@ class NIOSocketChannelWrapper(private val internalSocket: SocketChannel): INetwo
     override val socket: Socket
         get() = internalSocket.socket()
 
+    override val host: String
+        get() = internalSocket.socket().inetAddress.canonicalHostName
+
     override fun close() {
         internalSocket.close()
     }

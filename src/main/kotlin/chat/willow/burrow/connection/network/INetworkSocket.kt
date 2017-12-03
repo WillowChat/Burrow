@@ -7,6 +7,7 @@ interface INetworkSocket {
 
     val isConnected: Boolean
     fun close()
+    val host: String
     val socket: Socket
     fun write(bytes: ByteBuffer)
 

@@ -52,6 +52,7 @@ class SocketProcessorTests {
                 .thenReturn(mutableSetOf(acceptableKey))
 
         val mockSocket: INetworkSocket = mock()
+
         val mockSelectionKey: SelectionKey = mock()
 
         whenever(mockNioWrapper.accept(any()))

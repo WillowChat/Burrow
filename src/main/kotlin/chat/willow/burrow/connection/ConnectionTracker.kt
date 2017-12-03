@@ -28,6 +28,16 @@ interface IConnectionTracker {
 
 }
 
+interface IBurrowConnectionFactory {
+    fun create(id: ConnectionId, host: String, socket: INetworkSocket, accumulator: ILineAccumulator): BurrowConnection
+}
+
+object BurrowConnectionFactory: IBurrowConnectionFactory {
+    override fun create(id: ConnectionId, host: String, socket: INetworkSocket, accumulator: ILineAccumulator): BurrowConnection {
+        return BurrowConnection(id, host, socket, accumulator)
+    }
+}
+
 // todo: make most of this internal
 data class BurrowConnection(val id: ConnectionId, val host: String, val socket: INetworkSocket, val accumulator: ILineAccumulator) {
 
@@ -35,9 +45,27 @@ data class BurrowConnection(val id: ConnectionId, val host: String, val socket: 
         return id.toString()
     }
 
+    override fun hashCode(): Int {
+        var result = id
+        result = 31 * result + host.hashCode()
+        result = 31 * result + socket.hashCode()
+        result = 31 * result + accumulator.hashCode()
+        return result
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is BurrowConnection) return false
+
+        if (id != other.id) return false
+        if (host != other.host) return false
+
+        return true
+    }
+
 }
 
-class ConnectionTracker(socketProcessor: ISocketProcessor, val bufferSize: Int, var kale: IKale? = null): IConnectionTracker {
+class ConnectionTracker(socketProcessor: ISocketProcessor, val bufferSize: Int, var kale: IKale? = null, val connectionFactory: IBurrowConnectionFactory): IConnectionTracker {
 
     private val LOGGER = loggerFor<ConnectionTracker>()
 
@@ -85,11 +113,11 @@ class ConnectionTracker(socketProcessor: ISocketProcessor, val bufferSize: Int, 
     }
 
     private fun track(accepted: SocketProcessor.Accepted): Tracked {
-        val address = accepted.socket.socket.inetAddress.canonicalHostName
+        val address = accepted.socket.host
 
         val accumulator = LineAccumulator(bufferSize = bufferSize)
 
-        val connection = BurrowConnection(accepted.id, host = address, socket = accepted.socket, accumulator = accumulator)
+        val connection = connectionFactory.create(accepted.id, host = address, socket = accepted.socket, accumulator = accumulator)
 
         connections[accepted.id] = connection
 
