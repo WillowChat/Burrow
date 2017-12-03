@@ -1,5 +1,6 @@
 package chat.willow.burrow
 
+import chat.willow.burrow.connection.BurrowConnectionFactory
 import chat.willow.burrow.connection.ConnectionTracker
 import chat.willow.burrow.connection.network.*
 import chat.willow.burrow.helper.ThreadInterruptedChecker
@@ -35,7 +36,7 @@ object Burrow {
 
         val buffer = ByteBuffer.allocate(Server.MAX_LINE_LENGTH)
         val socketProcessor = SocketProcessor(nioWrapper, buffer, interruptedChecker)
-        val connectionTracker = ConnectionTracker(socketProcessor, bufferSize = Server.MAX_LINE_LENGTH)
+        val connectionTracker = ConnectionTracker(socketProcessor, bufferSize = Server.MAX_LINE_LENGTH, connectionFactory = BurrowConnectionFactory)
         val kale = createKale(KaleRouter(), KaleMetadataFactory(KaleTagRouter()))
         val clientTracker = ClientTracker(connections = connectionTracker) // todo: kalefactory
         connectionTracker.kale = kale
