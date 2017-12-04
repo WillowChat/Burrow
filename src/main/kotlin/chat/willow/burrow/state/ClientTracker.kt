@@ -20,6 +20,16 @@ import io.reactivex.subjects.PublishSubject
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
+interface IKaleFactory {
+    fun create(): IKale
+}
+
+object KaleFactory: IKaleFactory {
+    override fun create(): IKale {
+        return Kale(KaleRouter(), KaleMetadataFactory(KaleTagRouter()))
+    }
+}
+
 interface IClientTracker {
 
     val track: Observer<BurrowConnection>
@@ -27,7 +37,10 @@ interface IClientTracker {
 
 }
 
-class ClientTracker(val connections: IConnectionTracker): IClientTracker {
+class ClientTracker(val connections: IConnectionTracker,
+                    val registrationUseCase: IRegistrationUseCase,
+                    val kaleFactory: IKaleFactory = KaleFactory,
+                    val supportedCaps: Map<String, String?>): IClientTracker {
 
     private val LOGGER = loggerFor<ClientTracker>()
 
@@ -56,7 +69,7 @@ class ClientTracker(val connections: IConnectionTracker): IClientTracker {
 
         registeringClients += connection.id to RegisteringClient(connection)
 
-        val clientKale = Kale(KaleRouter(), KaleMetadataFactory(KaleTagRouter()))
+        val clientKale = kaleFactory.create()
         kales += connection.id to clientKale
 
         connection.accumulator.lines
@@ -65,8 +78,8 @@ class ClientTracker(val connections: IConnectionTracker): IClientTracker {
 
         clientKale.messages.subscribe { LOGGER.info("${connection.id} ~ >> ${it.message}")}
 
-        RegistrationUseCase(connections, connection)
-                .track(clientKale, caps = mapOf("cap-notify" to null))
+        registrationUseCase
+                .track(clientKale, supportedCaps, connection = connection)
                 .subscribeBy(onNext = {
                     registered(connection, it)
                 },

@@ -6,6 +6,7 @@ import chat.willow.burrow.connection.network.*
 import chat.willow.burrow.helper.ThreadInterruptedChecker
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.burrow.state.ClientTracker
+import chat.willow.burrow.state.RegistrationUseCase
 import chat.willow.kale.*
 import chat.willow.kale.irc.message.extension.cap.CapMessage
 import chat.willow.kale.irc.message.rfc1459.JoinMessage
@@ -38,7 +39,8 @@ object Burrow {
         val socketProcessor = SocketProcessor(nioWrapper, buffer, interruptedChecker)
         val connectionTracker = ConnectionTracker(socketProcessor, bufferSize = Server.MAX_LINE_LENGTH, connectionFactory = BurrowConnectionFactory)
         val kale = createKale(KaleRouter(), KaleMetadataFactory(KaleTagRouter()))
-        val clientTracker = ClientTracker(connections = connectionTracker) // todo: kalefactory
+        val registrationUseCase = RegistrationUseCase(connectionTracker)
+        val clientTracker = ClientTracker(connections = connectionTracker, registrationUseCase = registrationUseCase)
         connectionTracker.kale = kale
 
         connectionTracker.tracked

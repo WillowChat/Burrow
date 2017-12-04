@@ -40,14 +40,15 @@ class RegistrationUseCaseTests {
 
     private lateinit var scheduler: TestScheduler
 
+    private lateinit var connection: BurrowConnection
+
     @Before fun setUp() {
         mockSocket = mock()
         mockAccumulator = mock()
         mockConnectionTracker = mock()
 
-        val connection = BurrowConnection(id = 0, host = "host", socket = mockSocket, accumulator = mockAccumulator)
-
         mockKale = mock()
+        connection = BurrowConnection(id = 0, host = "host", socket = mockSocket, accumulator = mockAccumulator)
 
         mockUser = mockKaleObservable(mockKale, UserMessage.Command.Descriptor)
         mockNick = mockKaleObservable(mockKale, NickMessage.Command.Descriptor)
@@ -57,11 +58,11 @@ class RegistrationUseCaseTests {
 
         scheduler = TestScheduler()
 
-        sut = RegistrationUseCase(mockConnectionTracker, connection, scheduler)
+        sut = RegistrationUseCase(mockConnectionTracker, scheduler)
     }
 
     @Test fun `single USER and NICK results in registration without caps`() {
-        val observer = sut.track(mockKale).test()
+        val observer = sut.track(mockKale, mapOf(), connection).test()
 
         mockUser.onNext(UserMessage.Command("username", "*", "realname"))
         mockNick.onNext(NickMessage.Command("nickname"))
@@ -70,7 +71,7 @@ class RegistrationUseCaseTests {
     }
 
     @Test fun `double USER and NICK results in a single registration`() {
-        val observer = sut.track(mockKale).test()
+        val observer = sut.track(mockKale, mapOf(), connection).test()
 
         mockUser.onNext(UserMessage.Command("username", "*", "realname"))
         mockNick.onNext(NickMessage.Command("nickname"))
@@ -81,7 +82,7 @@ class RegistrationUseCaseTests {
     }
 
     @Test fun `USER, but no NICK, results in a timeout after 5 seconds`() {
-        val observer = sut.track(mockKale).test()
+        val observer = sut.track(mockKale, mapOf(), connection).test()
 
         mockUser.onNext(UserMessage.Command("username", "*", "realname"))
         scheduler.advanceTimeTo(5, TimeUnit.SECONDS)
@@ -90,7 +91,7 @@ class RegistrationUseCaseTests {
     }
 
     @Test fun `CAP LS, then USER and NICK, results in a timeout`() {
-        val observer = sut.track(mockKale).test()
+        val observer = sut.track(mockKale, mapOf(), connection).test()
 
         mockCapLs.onNext(CapMessage.Ls.Command(version = "302"))
         mockUser.onNext(UserMessage.Command("username", "*", "realname"))
@@ -101,7 +102,7 @@ class RegistrationUseCaseTests {
     }
 
     @Test fun `CAP LS, USER, NICK, and CAP END results in no caps enabled`() {
-        val observer = sut.track(mockKale).test()
+        val observer = sut.track(mockKale, mapOf(), connection).test()
 
         mockCapLs.onNext(CapMessage.Ls.Command(version = "302"))
         mockUser.onNext(UserMessage.Command("username", "*", "realname"))
@@ -112,7 +113,7 @@ class RegistrationUseCaseTests {
     }
 
     @Test fun `ircv3 negotiation with caps we support results in those caps being enabled`() {
-        val observer = sut.track(mockKale, caps = mapOf("someKey" to "someValue")).test()
+        val observer = sut.track(mockKale, caps = mapOf("someKey" to "someValue"), connection = connection).test()
 
         mockCapLs.onNext(CapMessage.Ls.Command(version = "302"))
         mockUser.onNext(UserMessage.Command("username", "*", "realname"))
@@ -124,7 +125,7 @@ class RegistrationUseCaseTests {
     }
 
     @Test fun `ircv3 negotiation with caps the client doesn't support results in those caps being disabled`() {
-        val observer = sut.track(mockKale, caps = mapOf("supportedKey" to null, "unsupportedKey" to null)).test()
+        val observer = sut.track(mockKale, caps = mapOf("supportedKey" to null, "unsupportedKey" to null), connection = connection).test()
 
         mockCapLs.onNext(CapMessage.Ls.Command(version = "302"))
         mockUser.onNext(UserMessage.Command("username", "*", "realname"))
@@ -136,7 +137,7 @@ class RegistrationUseCaseTests {
     }
 
     @Test fun `ircv3 negotiation with client requesting CAPs we don't support results in no caps enabled`() {
-        val observer = sut.track(mockKale, caps = mapOf("supportedKey" to null, "unsupportedKey" to null)).test()
+        val observer = sut.track(mockKale, caps = mapOf("supportedKey" to null, "unsupportedKey" to null), connection = connection).test()
 
         mockCapLs.onNext(CapMessage.Ls.Command(version = "302"))
         mockUser.onNext(UserMessage.Command("username", "*", "realname"))

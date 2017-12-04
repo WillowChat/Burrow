@@ -18,11 +18,11 @@ import java.util.regex.Pattern
 
 interface IRegistrationUseCase {
 
-    fun track(kale: IKale, caps: Map<String, String?> = mapOf()): Observable<RegistrationUseCase.Registered>
+    fun track(kale: IKale, caps: Map<String, String?> = mapOf(), connection: BurrowConnection): Observable<RegistrationUseCase.Registered>
 
 }
 
-class RegistrationUseCase(private val connections: IConnectionTracker, private val connection: BurrowConnection, private val scheduler: Scheduler = Schedulers.computation()): IRegistrationUseCase {
+class RegistrationUseCase(private val connections: IConnectionTracker, private val scheduler: Scheduler = Schedulers.computation()): IRegistrationUseCase {
 
     private val LOGGER = loggerFor<RegistrationUseCase>()
 
@@ -33,7 +33,7 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
     private val TIMEOUT_SECONDS: Long = 5
     private val alphanumeric = Pattern.compile("^[a-zA-Z0-9]*$").asPredicate()
 
-    override fun track(kale: IKale, caps: Map<String, String?>): Observable<Registered> {
+    override fun track(kale: IKale, caps: Map<String, String?>, connection: BurrowConnection): Observable<Registered> {
         val users = kale.observe(UserMessage.Command.Descriptor).share()
         val nicks = kale.observe(NickMessage.Command.Descriptor).share()
 
