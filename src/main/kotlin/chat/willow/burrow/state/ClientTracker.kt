@@ -111,7 +111,7 @@ class ClientTracker(val connections: IConnectionTracker,
 
         // todo: hook up a ClientUseCase?
 
-        connections.send(connection.id, Rpl001MessageType(source = "bunnies", target = client.prefix.nick, contents = "welcome to bunnies"))
+        connections.send(connection.id, Rpl001MessageType(source = "bunnies", target = client.prefix.nick, contents = "welcome to burrow"))
 
         LOGGER.info("connection $connection registered: $details")
     }
