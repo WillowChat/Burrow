@@ -12,6 +12,8 @@ import chat.willow.kale.IrcMessageComponents
 import chat.willow.kale.KaleDescriptor
 import chat.willow.kale.KaleObservable
 import chat.willow.kale.irc.message.IrcMessage
+import chat.willow.kale.irc.message.rfc1459.PingMessage
+import chat.willow.kale.irc.message.rfc1459.PongMessage
 import com.nhaarman.mockito_kotlin.*
 import io.reactivex.subjects.PublishSubject
 import org.junit.Before
@@ -56,6 +58,18 @@ class ClientTrackerTests {
         sut.track.onNext(connection)
 
         verify(mockRegistration).track(mockKale, mapOf("something" to null), connection)
+    }
+
+    @Test fun `when a client is tracked, we start responding to client pings`() {
+        val pingMessages = mockKaleObservable(mockKale, PingMessage.Command.Descriptor)
+
+        val accumulator = LineAccumulator(bufferSize = 1)
+        val connection = BurrowConnection(id = 1, host = "", socket = mock(), accumulator = accumulator)
+
+        sut.track.onNext(connection)
+        pingMessages.onNext(PingMessage.Command(token = "something"))
+
+        verify(mockConnectionTracker).send(id = 1, message = PongMessage.Message(token = "something"))
     }
 
 }

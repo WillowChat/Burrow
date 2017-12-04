@@ -40,7 +40,9 @@ object Burrow {
         val connectionTracker = ConnectionTracker(socketProcessor, bufferSize = Server.MAX_LINE_LENGTH, connectionFactory = BurrowConnectionFactory)
         val kale = createKale(KaleRouter(), KaleMetadataFactory(KaleTagRouter()))
         val registrationUseCase = RegistrationUseCase(connectionTracker)
-        val clientTracker = ClientTracker(connections = connectionTracker, registrationUseCase = registrationUseCase)
+
+        val supportedCaps = mapOf<String, String?>("cap-notify" to null)
+        val clientTracker = ClientTracker(connections = connectionTracker, registrationUseCase = registrationUseCase, supportedCaps = supportedCaps)
         connectionTracker.kale = kale
 
         connectionTracker.tracked

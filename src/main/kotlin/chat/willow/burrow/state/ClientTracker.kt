@@ -90,8 +90,8 @@ class ClientTracker(val connections: IConnectionTracker,
                     LOGGER.info("registration completed for connection ${connection.id}")
                 })
 
-        clientKale.observe(PingMessage.Command.Descriptor)
-                .throttleFirst(5, TimeUnit.SECONDS, Schedulers.trampoline())
+        clientKale
+                .observe(PingMessage.Command.Descriptor)
                 .subscribe { connections.send(connection.id, PongMessage.Message(token = it.message.token)) }
 
         LOGGER.info("tracked registering client $connection")
