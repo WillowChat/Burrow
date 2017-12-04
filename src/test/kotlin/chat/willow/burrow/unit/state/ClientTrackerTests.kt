@@ -1,8 +1,10 @@
 package chat.willow.burrow.unit.state
 
 import chat.willow.burrow.connection.BurrowConnection
+import chat.willow.burrow.connection.ConnectionTracker
 import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.connection.line.LineAccumulator
+import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.state.ClientTracker
 import chat.willow.burrow.state.IKaleFactory
 import chat.willow.burrow.state.IRegistrationUseCase
@@ -78,12 +80,24 @@ class ClientTrackerTests {
     @Test fun `when a client registers, they're sent an MOTD`() {
         val accumulator = LineAccumulator(bufferSize = 1)
         val connection = BurrowConnection(id = 1, host = "", socket = mock(), accumulator = accumulator)
-
         sut.track.onNext(connection)
 
         track.onNext(RegistrationUseCase.Registered(Prefix(nick = "anyone"), setOf()))
 
         verify(mockConnectionTracker).send(id = 1, message = Rpl001MessageType(source = "bunnies", target = "anyone", contents = "welcome to burrow"))
+    }
+
+    @Test fun `when a client fails to register, they're dropped`() {
+        val accumulator = LineAccumulator(bufferSize = 1)
+        val connection = BurrowConnection(id = 1, host = "", socket = mock(), accumulator = accumulator)
+        sut.track.onNext(connection)
+        val drop = PublishSubject.create<ConnectionId>()
+        whenever(mockConnectionTracker.drop).thenReturn(drop)
+
+        val observer = drop.test()
+        track.onError(RuntimeException("intentional failure"))
+
+        observer.assertValue(1)
     }
 
 }
