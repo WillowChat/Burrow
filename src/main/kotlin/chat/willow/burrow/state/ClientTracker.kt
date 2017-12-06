@@ -8,9 +8,6 @@ import chat.willow.kale.IKale
 import chat.willow.kale.Kale
 import chat.willow.kale.KaleMetadataFactory
 import chat.willow.kale.KaleRouter
-import chat.willow.kale.irc.message.rfc1459.PingMessage
-import chat.willow.kale.irc.message.rfc1459.PongMessage
-import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001MessageType
 import chat.willow.kale.irc.prefix.Prefix
 import chat.willow.kale.irc.tag.KaleTagRouter
 import io.reactivex.Observer
@@ -18,7 +15,6 @@ import io.reactivex.rxkotlin.subscribeBy
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
 
 interface IKaleFactory {
     fun create(): IKale
