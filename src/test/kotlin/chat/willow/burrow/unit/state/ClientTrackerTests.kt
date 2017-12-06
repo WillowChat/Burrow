@@ -16,7 +16,6 @@ import chat.willow.kale.KaleObservable
 import chat.willow.kale.irc.message.IrcMessage
 import chat.willow.kale.irc.message.rfc1459.PingMessage
 import chat.willow.kale.irc.message.rfc1459.PongMessage
-import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001Message
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001MessageType
 import chat.willow.kale.irc.prefix.Prefix
 import com.nhaarman.mockito_kotlin.*
@@ -63,28 +62,6 @@ class ClientTrackerTests {
         sut.track.onNext(connection)
 
         verify(mockRegistration).track(mockKale, mapOf("something" to null), connection)
-    }
-
-    @Test fun `when a client is tracked, we start responding to client pings`() {
-        val pingMessages = mockKaleObservable(mockKale, PingMessage.Command.Descriptor)
-
-        val accumulator = LineAccumulator(bufferSize = 1)
-        val connection = BurrowConnection(id = 1, host = "", socket = mock(), accumulator = accumulator)
-
-        sut.track.onNext(connection)
-        pingMessages.onNext(PingMessage.Command(token = "something"))
-
-        verify(mockConnectionTracker).send(id = 1, message = PongMessage.Message(token = "something"))
-    }
-
-    @Test fun `when a client registers, they're sent an MOTD`() {
-        val accumulator = LineAccumulator(bufferSize = 1)
-        val connection = BurrowConnection(id = 1, host = "", socket = mock(), accumulator = accumulator)
-        sut.track.onNext(connection)
-
-        track.onNext(RegistrationUseCase.Registered(Prefix(nick = "anyone"), setOf()))
-
-        verify(mockConnectionTracker).send(id = 1, message = Rpl001MessageType(source = "bunnies", target = "anyone", contents = "welcome to burrow"))
     }
 
     @Test fun `when a client fails to register, they're dropped`() {

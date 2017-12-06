@@ -47,7 +47,7 @@ class ClientTracker(val connections: IConnectionTracker,
     data class RegisteringClient(val connection: BurrowConnection)
     private val registeringClients: MutableMap<ConnectionId, RegisteringClient> = ConcurrentHashMap()
 
-    data class ConnectedClient(val connection: BurrowConnection, val prefix: Prefix)
+    data class ConnectedClient(val connection: BurrowConnection, val kale: IKale, val prefix: Prefix)
     private val connectedClients: MutableMap<ConnectionId, ConnectedClient> = ConcurrentHashMap()
 
     private val kales: MutableMap<ConnectionId, IKale> = ConcurrentHashMap()
@@ -81,7 +81,7 @@ class ClientTracker(val connections: IConnectionTracker,
         registrationUseCase
                 .track(clientKale, supportedCaps, connection = connection)
                 .subscribeBy(onNext = {
-                    registered(connection, it)
+                    registered(connection, details = it, kale = clientKale)
                 },
                 onError = {
                     registrationFailed(connection, it)
@@ -89,10 +89,6 @@ class ClientTracker(val connections: IConnectionTracker,
                 onComplete = {
                     LOGGER.info("registration completed for connection ${connection.id}")
                 })
-
-        clientKale
-                .observe(PingMessage.Command.Descriptor)
-                .subscribe { connections.send(connection.id, PongMessage.Message(token = it.message.token)) }
 
         LOGGER.info("tracked registering client $connection")
     }
@@ -103,17 +99,16 @@ class ClientTracker(val connections: IConnectionTracker,
         connections.drop.onNext(connection.id)
     }
 
-    private fun registered(connection: BurrowConnection, details: RegistrationUseCase.Registered) {
-        val client = ConnectedClient(connection, prefix = details.prefix)
+    private fun registered(connection: BurrowConnection, details: RegistrationUseCase.Registered, kale: IKale) {
+        val client = ConnectedClient(connection, kale = kale, prefix = details.prefix)
 
         registeringClients -= connection.id
         connectedClients += connection.id to client
 
-        // todo: hook up a ClientUseCase?
-
-        connections.send(connection.id, Rpl001MessageType(source = "bunnies", target = client.prefix.nick, contents = "welcome to burrow"))
-
         LOGGER.info("connection $connection registered: $details")
+
+        ClientUseCase(connections)
+                .track(client)
     }
 
     private fun drop(id: ConnectionId) {
