@@ -1,8 +1,9 @@
 package chat.willow.burrow.unit.state
 
 import chat.willow.burrow.connection.IConnectionTracker
-import chat.willow.burrow.makeClient
+import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.state.ChannelsUseCase
+import chat.willow.burrow.utility.KaleUtilities
 import chat.willow.kale.IKale
 import chat.willow.kale.irc.message.rfc1459.JoinMessage
 import com.nhaarman.mockito_kotlin.mock
@@ -22,7 +23,7 @@ class ChannelsUseCaseTests {
 
     @Before fun setUp() {
         mockConnections = mock()
-        mockKale = mock()
+        mockKale = KaleUtilities.mockKale()
 
         joins = mockKaleObservable(mockKale, JoinMessage.Command.Descriptor)
 
