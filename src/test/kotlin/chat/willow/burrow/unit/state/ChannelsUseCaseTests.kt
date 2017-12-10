@@ -9,6 +9,8 @@ import chat.willow.kale.irc.message.rfc1459.JoinMessage
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.verify
 import io.reactivex.subjects.PublishSubject
+import junit.framework.Assert.assertEquals
+import junit.framework.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -37,6 +39,26 @@ class ChannelsUseCaseTests {
         joins.onNext(JoinMessage.Command(channels = listOf("somewhere")))
 
         verify(mockConnections).send(id = 1, message = JoinMessage.Message(source = client.prefix, channels = listOf("somewhere")))
+    }
+
+    @Test fun `when a client joins a nonexistent channel, it is created`() {
+        val client = makeClient(mockKale)
+        sut.track(client)
+
+        joins.onNext(JoinMessage.Command(channels = listOf("new_channel")))
+
+        assertTrue(sut.channels.contains("new_channel"))
+    }
+
+    @Test fun `when a client joins the same channel, with different cases, only one channel is made`() {
+        val client = makeClient(mockKale)
+        sut.track(client)
+
+        joins.onNext(JoinMessage.Command(channels = listOf("new_channel", "New_Channel")))
+
+        assertTrue(sut.channels.contains("new_channel"))
+        assertTrue(sut.channels.contains("New_Channel"))
+        assertEquals(1, sut.channels.all.keys.count())
     }
 
 }

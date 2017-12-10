@@ -8,6 +8,8 @@ import chat.willow.burrow.helper.loggerFor
 import chat.willow.burrow.state.ClientTracker
 import chat.willow.burrow.state.RegistrationUseCase
 import chat.willow.kale.*
+import chat.willow.kale.helper.CaseMapping
+import chat.willow.kale.helper.ICaseMapper
 import chat.willow.kale.irc.message.extension.cap.CapMessage
 import chat.willow.kale.irc.message.rfc1459.JoinMessage
 import chat.willow.kale.irc.message.rfc1459.PingMessage
@@ -83,6 +85,17 @@ object Burrow {
             val BUFFER_SIZE = 8192
             val MAX_LINE_LENGTH = BUFFER_SIZE
             val UTF_8: Charset = Charset.forName("UTF-8")
+            val MAPPER = object : ICaseMapper {
+                override val current = CaseMapping.RFC1459
+
+                override fun toLower(string: String): String {
+                    return current.toLower(string)
+                }
+
+                override fun toString(): String {
+                    return current.toString()
+                }
+            }
         }
 
         fun start() {
