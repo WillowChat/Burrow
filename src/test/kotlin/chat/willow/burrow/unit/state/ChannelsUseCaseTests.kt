@@ -7,6 +7,8 @@ import chat.willow.burrow.utility.KaleUtilities
 import chat.willow.kale.IKale
 import chat.willow.kale.irc.message.rfc1459.JoinMessage
 import chat.willow.kale.irc.message.rfc1459.PartMessage
+import chat.willow.kale.irc.prefix.Prefix
+import com.nhaarman.mockito_kotlin.inOrder
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.verify
 import io.reactivex.subjects.PublishSubject
@@ -41,6 +43,18 @@ class ChannelsUseCaseTests {
         joins.onNext(JoinMessage.Command(channels = listOf("somewhere")))
 
         verify(mockConnections).send(id = 1, message = JoinMessage.Message(source = client.prefix, channels = listOf("somewhere")))
+    }
+
+    @Test fun `when a client joins multiple channels, each gets a JOIN`() {
+        val client = makeClient(mockKale)
+        sut.track(client)
+
+        joins.onNext(JoinMessage.Command(channels = listOf("somewhere", "somewhere_else")))
+
+        inOrder(mockConnections) {
+            verify(mockConnections).send(id = 1, message = JoinMessage.Message(source = client.prefix, channels = listOf("somewhere")))
+            verify(mockConnections).send(id = 1, message = JoinMessage.Message(source = client.prefix, channels = listOf("somewhere_else")))
+        }
     }
 
     @Test fun `when a client joins a nonexistent channel, it is created`() {
@@ -80,6 +94,27 @@ class ChannelsUseCaseTests {
         parts.onNext(PartMessage.Command(channels = listOf("existing_channel")))
 
         verify(mockConnections).send(id = 1, message = PartMessage.Message(source = client.prefix, channels = listOf("existing_channel")))
+    }
+
+    @Test fun `when a client parts multiple channels, each gets a PART`() {
+        val client = makeClient(mockKale)
+        sut.track(client)
+
+        parts.onNext(PartMessage.Command(channels = listOf("somewhere", "somewhere_else")))
+
+        inOrder(mockConnections) {
+            verify(mockConnections).send(id = 1, message = PartMessage.Message(source = client.prefix, channels = listOf("somewhere")))
+            verify(mockConnections).send(id = 1, message = PartMessage.Message(source = client.prefix, channels = listOf("somewhere_else")))
+        }
+    }
+
+    @Test fun `when a client JOINs a channel, the channel contains them`() {
+        val client = makeClient(mockKale, prefix = Prefix(nick = "someone"))
+        sut.track(client)
+
+        joins.onNext(JoinMessage.Command(channels = listOf("somewhere")))
+
+        assertTrue(sut.channels["somewhere"]?.users?.contains("someone") ?: false)
     }
 
 }

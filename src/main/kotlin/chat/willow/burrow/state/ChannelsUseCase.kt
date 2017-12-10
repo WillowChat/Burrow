@@ -16,7 +16,11 @@ interface IChannelsUseCase {
 
 }
 
-data class Channel(override val name: String): INamed
+data class Channel(override val name: String,
+                   val users: CaseInsensitiveNamedMap<ChannelUser>
+                    = CaseInsensitiveNamedMap(mapper = Burrow.Server.MAPPER)): INamed
+
+data class ChannelUser(override val name: String): INamed
 
 class ChannelsUseCase(private val connections: IConnectionTracker): IChannelsUseCase {
 
@@ -36,15 +40,18 @@ class ChannelsUseCase(private val connections: IConnectionTracker): IChannelsUse
 
     private fun handleJoin(observable: KaleObservable<JoinMessage.Command>, client: ClientTracker.ConnectedClient) {
         observable.message.channels.forEach {
-            val channelExists = channels.contains(it)
-
-            if (channelExists) {
-                // todo: put user in the channel
+            val channel = if (channels.contains(it)) {
+                channels[it]!! // todo: remove
             } else {
-                channels += Channel(name = it)
+                val channel = Channel(name = it)
+                channels += channel
+
+                channel
             }
 
-            val message = JoinMessage.Message(source = client.prefix, channels = observable.message.channels)
+            channel.users += ChannelUser(client.prefix.nick)
+
+            val message = JoinMessage.Message(source = client.prefix, channels = listOf(channel.name))
             connections.send(client.connection.id, message)
         }
     }
@@ -58,7 +65,7 @@ class ChannelsUseCase(private val connections: IConnectionTracker): IChannelsUse
                 channels -= channel.name
             }
 
-            val message = PartMessage.Message(source = client.prefix, channels = observable.message.channels)
+            val message = PartMessage.Message(source = client.prefix, channels = listOf(it))
             connections.send(client.connection.id, message)
         }
     }
