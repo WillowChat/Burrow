@@ -117,4 +117,36 @@ class ChannelsUseCaseTests {
         assertTrue(sut.channels["somewhere"]?.users?.contains("someone") ?: false)
     }
 
+    @Test fun `when a two clients JOIN a channel, the channel contains both of them`() {
+        val mockKaleOne = KaleUtilities.mockKale()
+        val mockKaleTwo = KaleUtilities.mockKale()
+        val clientOneJoins = mockKaleObservable(mockKaleOne, JoinMessage.Command.Descriptor)
+        val clientTwoJoins = mockKaleObservable(mockKaleTwo, JoinMessage.Command.Descriptor)
+        val clientOne = makeClient(mockKaleOne, prefix = Prefix(nick = "someone"))
+        val clientTwo = makeClient(mockKaleTwo, prefix = Prefix(nick = "someone_else"))
+        sut.track(clientOne)
+        sut.track(clientTwo)
+
+        clientOneJoins.onNext(JoinMessage.Command(channels = listOf("somewhere")))
+        clientTwoJoins.onNext(JoinMessage.Command(channels = listOf("somewhere")))
+
+        assertEquals(setOf("someone", "someone_else"), sut.channels["somewhere"]?.users?.all?.keys)
+    }
+
+    @Test fun `when the same client joins a channel twice, there's only one of them in the channel`() {
+        val mockKaleOne = KaleUtilities.mockKale()
+        val mockKaleTwo = KaleUtilities.mockKale()
+        val clientOneJoins = mockKaleObservable(mockKaleOne, JoinMessage.Command.Descriptor)
+        val clientTwoJoins = mockKaleObservable(mockKaleTwo, JoinMessage.Command.Descriptor)
+        val clientOne = makeClient(mockKaleOne, prefix = Prefix(nick = "someone"))
+        val clientTwo = makeClient(mockKaleTwo, prefix = Prefix(nick = "Someone"))
+        sut.track(clientOne)
+        sut.track(clientTwo)
+
+        clientOneJoins.onNext(JoinMessage.Command(channels = listOf("somewhere")))
+        clientTwoJoins.onNext(JoinMessage.Command(channels = listOf("somewhere")))
+
+        assertEquals(setOf("someone"), sut.channels["somewhere"]?.users?.all?.keys)
+    }
+
 }

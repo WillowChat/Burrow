@@ -16,7 +16,7 @@ fun makeClient(kale: IKale, id: ConnectionId = 1, prefix: Prefix = chat.willow.k
     val accumulator = LineAccumulator(bufferSize = 1)
     val connection = BurrowConnection(id = id, host = prefix.host ?: "", socket = mock(), accumulator = accumulator)
 
-    return ClientTracker.ConnectedClient(connection, kale, chat.willow.kale.irc.prefix.prefix("someone"))
+    return ClientTracker.ConnectedClient(connection, kale, prefix)
 }
 
 object KaleUtilities {
