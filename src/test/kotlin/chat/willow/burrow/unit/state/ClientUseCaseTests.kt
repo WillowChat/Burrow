@@ -4,6 +4,7 @@ import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.connection.line.LineAccumulator
 import chat.willow.burrow.connection.network.ConnectionId
+import chat.willow.burrow.makeClient
 import chat.willow.burrow.state.ClientTracker
 import chat.willow.burrow.state.ClientUseCase
 import chat.willow.kale.IKale
@@ -55,22 +56,6 @@ class ClientUseCaseTests {
         sut.track(client)
 
         verify(mockConnectionTracker).send(id = 1, message = Rpl001MessageType(source = "bunnies", target = "someone", contents = "welcome to burrow"))
-    }
-
-    @Test fun `when a client sends a JOIN message, reply with a JOIN`() {
-        val client = makeClient(mockKale)
-        sut.track(client)
-
-        joins.onNext(JoinMessage.Command(channels = listOf("somewhere")))
-
-        verify(mockConnectionTracker).send(id = 1, message = JoinMessage.Message(source = client.prefix, channels = listOf("somewhere")))
-    }
-
-    private fun makeClient(kale: IKale, id: ConnectionId = 1, prefix: Prefix = prefix("someone")): ClientTracker.ConnectedClient {
-        val accumulator = LineAccumulator(bufferSize = 1)
-        val connection = BurrowConnection(id = id, host = prefix.host ?: "", socket = mock(), accumulator = accumulator)
-
-        return ClientTracker.ConnectedClient(connection, mockKale, prefix("someone"))
     }
 
 }
