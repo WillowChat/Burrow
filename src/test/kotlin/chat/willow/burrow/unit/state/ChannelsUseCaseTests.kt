@@ -5,11 +5,15 @@ import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.state.ChannelsUseCase
 import chat.willow.burrow.utility.KaleUtilities
 import chat.willow.kale.IKale
+import chat.willow.kale.irc.CharacterCodes
 import chat.willow.kale.irc.message.rfc1459.JoinMessage
 import chat.willow.kale.irc.message.rfc1459.PartMessage
+import chat.willow.kale.irc.message.rfc1459.rpl.Rpl353Message
 import chat.willow.kale.irc.prefix.Prefix
+import chat.willow.kale.irc.prefix.prefix
 import com.nhaarman.mockito_kotlin.inOrder
 import com.nhaarman.mockito_kotlin.mock
+import com.nhaarman.mockito_kotlin.only
 import com.nhaarman.mockito_kotlin.verify
 import io.reactivex.subjects.PublishSubject
 import org.junit.Assert.*
@@ -43,6 +47,35 @@ class ChannelsUseCaseTests {
         joins.onNext(JoinMessage.Command(channels = listOf("somewhere")))
 
         verify(mockConnections).send(id = 1, message = JoinMessage.Message(source = client.prefix, channels = listOf("somewhere")))
+    }
+
+    @Test fun `when a client joins a channel, and the channel was empty, send a NAMREPLY with only them`() {
+        val client = makeClient(mockKale, prefix = prefix(nick = "someone"))
+        sut.track(client)
+
+        joins.onNext(JoinMessage.Command(channels = listOf("somewhere")))
+
+        val names = listOf("someone")
+        val message = Rpl353Message.Message(source = "bunnies", target = "someone", visibility = CharacterCodes.EQUALS.toString(), channel = "somewhere", names = names)
+        verify(mockConnections).send(id = 1, message = message)
+    }
+
+    @Test fun `when a client joins a channel, and the channel was empty, send a NAMREPLY with current users`() {
+        val mockKaleOne = KaleUtilities.mockKale()
+        val mockKaleTwo = KaleUtilities.mockKale()
+        val clientOneJoins = mockKaleObservable(mockKaleOne, JoinMessage.Command.Descriptor)
+        val clientTwoJoins = mockKaleObservable(mockKaleTwo, JoinMessage.Command.Descriptor)
+        val clientOne = makeClient(mockKaleOne, id = 1, prefix = Prefix(nick = "someone"))
+        val clientTwo = makeClient(mockKaleTwo, id = 2, prefix = Prefix(nick = "someone_else"))
+        sut.track(clientOne)
+        sut.track(clientTwo)
+
+        clientOneJoins.onNext(JoinMessage.Command(channels = listOf("somewhere")))
+        clientTwoJoins.onNext(JoinMessage.Command(channels = listOf("somewhere")))
+
+        val names = listOf("someone", "someone_else")
+        val message = Rpl353Message.Message(source = "bunnies", target = "someone_else", visibility = CharacterCodes.EQUALS.toString(), channel = "somewhere", names = names)
+        verify(mockConnections).send(id = 2, message = message)
     }
 
     @Test fun `when a client joins multiple channels, each gets a JOIN`() {
