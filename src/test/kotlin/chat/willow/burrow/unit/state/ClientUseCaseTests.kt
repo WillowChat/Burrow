@@ -29,14 +29,14 @@ class ClientUseCaseTests {
     @Test fun `when a client is tracked, they're sent an MOTD`() {
         val client = makeClient(mockKale)
 
-        sut.track(client)
+        sut.track.onNext(client)
 
         verify(mockConnectionTracker).send(id = 1, message = Rpl001MessageType(source = "bunnies", target = "someone", contents = "welcome to burrow"))
     }
 
     @Test fun `after tracking a client, we can look them up by username`() {
         val client = makeClient(mockKale, prefix = prefix(nick = "someone"))
-        sut.track(client)
+        sut.track.onNext(client)
 
         val result = sut.lookUpClient(nick = "someone")
 
@@ -45,7 +45,17 @@ class ClientUseCaseTests {
 
     @Test fun `if we haven't tracked a client, we can't look them up by username`() {
         val client = makeClient(mockKale, prefix = prefix(nick = "someone else"))
-        sut.track(client)
+        sut.track.onNext(client)
+
+        val result = sut.lookUpClient(nick = "someone")
+
+        assertNull(result)
+    }
+
+    @Test fun `we can't look up a dropped client`() {
+        val client = makeClient(mockKale, id = 1, prefix = prefix(nick = "someone"))
+        sut.track.onNext(client)
+        sut.drop.onNext(1)
 
         val result = sut.lookUpClient(nick = "someone")
 

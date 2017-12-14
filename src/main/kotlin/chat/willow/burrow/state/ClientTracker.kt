@@ -36,6 +36,7 @@ interface IClientTracker {
 
 class ClientTracker(val connections: IConnectionTracker,
                     val registrationUseCase: IRegistrationUseCase,
+                    val clientUseCase: IClientUseCase,
                     val kaleFactory: IKaleFactory = KaleFactory,
                     val supportedCaps: Map<String, String?>): IClientTracker {
 
@@ -60,6 +61,7 @@ class ClientTracker(val connections: IConnectionTracker,
     init {
         track.subscribe(this::track)
         drop.subscribe(this::drop)
+        drop.subscribe(clientUseCase.drop)
     }
 
     private fun track(connection: BurrowConnection) {
@@ -107,8 +109,8 @@ class ClientTracker(val connections: IConnectionTracker,
 
         LOGGER.info("connection $connection registered: $details")
 
-        ClientUseCase(connections)
-                .track(client)
+        clientUseCase.track
+            .onNext(client)
     }
 
     private fun drop(id: ConnectionId) {

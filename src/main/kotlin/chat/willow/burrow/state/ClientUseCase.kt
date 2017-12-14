@@ -2,18 +2,23 @@ package chat.willow.burrow.state
 
 import chat.willow.burrow.Burrow
 import chat.willow.burrow.connection.IConnectionTracker
+import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.helper.CaseInsensitiveNamedMap
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001MessageType
+import io.reactivex.Observer
+import io.reactivex.subjects.PublishSubject
 
-interface ClientUseCasing {
+interface IClientUseCase {
 
-    fun track(client: ClientTracker.ConnectedClient)
     fun lookUpClient(nick: String): ClientTracker.ConnectedClient?
+
+    val track: Observer<ClientTracker.ConnectedClient>
+    val drop: Observer<ConnectionId>
 
 }
 
-class ClientUseCase(val connections: IConnectionTracker): ClientUseCasing {
+class ClientUseCase(val connections: IConnectionTracker): IClientUseCase {
 
     private val LOGGER = loggerFor<ClientUseCase>()
 
@@ -22,9 +27,15 @@ class ClientUseCase(val connections: IConnectionTracker): ClientUseCasing {
 
     private val clients = CaseInsensitiveNamedMap<ClientTracker.ConnectedClient>(mapper = Burrow.Server.MAPPER)
 
-    // todo: drop clients when they disconnect
+    override val track = PublishSubject.create<ClientTracker.ConnectedClient>()
+    override val drop = PublishSubject.create<ConnectionId>()
 
-    override fun track(client: ClientTracker.ConnectedClient) {
+    init {
+        track.subscribe(this::track)
+        drop.subscribe(this::drop)
+    }
+
+    private fun track(client: ClientTracker.ConnectedClient) {
         connections.send(client.connection.id, Rpl001MessageType(source = "bunnies", target = client.prefix.nick, contents = "welcome to burrow"))
 
         ping.track(client)
@@ -36,5 +47,13 @@ class ClientUseCase(val connections: IConnectionTracker): ClientUseCasing {
 
     override fun lookUpClient(nick: String): ClientTracker.ConnectedClient? {
         return clients[nick]
+    }
+
+    private fun drop(connectionId: ConnectionId) {
+        // todo: optimise
+        val client = clients.all.values.firstOrNull { connectionId == it.connection.id }
+        if (client != null) {
+            clients -= client.name
+        }
     }
 }

@@ -5,10 +5,7 @@ import chat.willow.burrow.connection.ConnectionTracker
 import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.connection.line.LineAccumulator
 import chat.willow.burrow.connection.network.ConnectionId
-import chat.willow.burrow.state.ClientTracker
-import chat.willow.burrow.state.IKaleFactory
-import chat.willow.burrow.state.IRegistrationUseCase
-import chat.willow.burrow.state.RegistrationUseCase
+import chat.willow.burrow.state.*
 import chat.willow.kale.IKale
 import chat.willow.kale.IrcMessageComponents
 import chat.willow.kale.KaleDescriptor
@@ -28,6 +25,7 @@ class ClientTrackerTests {
     private lateinit var sut: ClientTracker
     private lateinit var mockConnectionTracker: IConnectionTracker
     private lateinit var mockRegistration: IRegistrationUseCase
+    private lateinit var mockClientUseCase: IClientUseCase
     private lateinit var mockKaleFactory: IKaleFactory
     private lateinit var mockKale: IKale
 
@@ -39,6 +37,7 @@ class ClientTrackerTests {
     @Before fun setUp() {
         mockConnectionTracker = mock()
         mockRegistration = mock()
+        mockClientUseCase = mock()
         mockKaleFactory = mock()
         mockKale = mock()
 
@@ -46,13 +45,16 @@ class ClientTrackerTests {
         whenever(mockKale.lines).thenReturn(lines)
         whenever(mockKale.messages).thenReturn(messages)
 
+        whenever(mockClientUseCase.track).thenReturn(PublishSubject.create())
+        whenever(mockClientUseCase.drop).thenReturn(PublishSubject.create())
+
         val kaleObservable = PublishSubject.create<KaleObservable<*>>()
         whenever(mockKale.observe(any<KaleDescriptor<*>>())).thenReturn(kaleObservable)
 
         track = PublishSubject.create<RegistrationUseCase.Registered>()
         whenever(mockRegistration.track(any(), any(), any())).thenReturn(track)
 
-        sut = ClientTracker(mockConnectionTracker, mockRegistration, mockKaleFactory, supportedCaps = mapOf("something" to null))
+        sut = ClientTracker(mockConnectionTracker, mockRegistration, mockClientUseCase, mockKaleFactory, supportedCaps = mapOf("something" to null))
     }
 
     @Test fun `when a client is tracked, we track them with the registration use case`() {
