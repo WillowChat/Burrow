@@ -5,12 +5,11 @@ import chat.willow.burrow.connection.ConnectionTracker
 import chat.willow.burrow.connection.network.*
 import chat.willow.burrow.helper.ThreadInterruptedChecker
 import chat.willow.burrow.helper.loggerFor
-import chat.willow.burrow.state.ClientTracker
-import chat.willow.burrow.state.ClientUseCase
-import chat.willow.burrow.state.RegistrationUseCase
+import chat.willow.burrow.state.*
 import chat.willow.kale.*
 import chat.willow.kale.helper.CaseMapping
 import chat.willow.kale.helper.ICaseMapper
+import chat.willow.kale.irc.CharacterCodes
 import chat.willow.kale.irc.message.extension.cap.CapMessage
 import chat.willow.kale.irc.message.rfc1459.JoinMessage
 import chat.willow.kale.irc.message.rfc1459.PingMessage
@@ -24,6 +23,7 @@ import chat.willow.kale.irc.tag.KaleTagRouter
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
+import java.util.regex.Pattern
 import kotlin.concurrent.thread
 
 object Burrow {
@@ -74,10 +74,16 @@ object Burrow {
         router.register(CapMessage.Ls.Message::class, CapMessage.Ls.Message.Serialiser)
         router.register(CapMessage.Ack.Message::class, CapMessage.Ack.Message.Serialiser)
         router.register(CapMessage.Nak.Message::class, CapMessage.Nak.Message.Serialiser)
+        router.register(Rpl403MessageType::class, Rpl403Message.Serialiser)
 
         router.register(RawMessage.Line::class, RawMessage.Line.Serialiser)
 
         return Kale(router, metadataFactory)
+    }
+
+    object Validation {
+        val alphanumeric = Pattern.compile("^[a-zA-Z0-9]*$").asPredicate()
+        val channel = Pattern.compile("^#[a-zA-Z0-9_]+$").asPredicate()
     }
 
     class Server(private val nioWrapper: INIOWrapper,

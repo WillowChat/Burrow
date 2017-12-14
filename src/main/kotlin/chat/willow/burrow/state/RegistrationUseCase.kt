@@ -1,5 +1,6 @@
 package chat.willow.burrow.state
 
+import chat.willow.burrow.Burrow.Validation.alphanumeric
 import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.helper.loggerFor
@@ -14,7 +15,6 @@ import io.reactivex.rxkotlin.Observables
 import io.reactivex.rxkotlin.withLatestFrom
 import io.reactivex.schedulers.Schedulers
 import java.util.concurrent.TimeUnit
-import java.util.regex.Pattern
 
 interface IRegistrationUseCase {
 
@@ -31,7 +31,6 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
     private val MAX_USER_LENGTH = 9
     private val MAX_NICK_LENGTH = 30 // todo: isupport
     private val TIMEOUT_SECONDS: Long = 5
-    private val alphanumeric = Pattern.compile("^[a-zA-Z0-9]*$").asPredicate()
 
     override fun track(kale: IKale, caps: Map<String, String?>, connection: BurrowConnection): Observable<Registered> {
         val users = kale.observe(UserMessage.Command.Descriptor).share()
