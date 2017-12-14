@@ -8,6 +8,7 @@ import chat.willow.kale.IKale
 import chat.willow.kale.Kale
 import chat.willow.kale.KaleMetadataFactory
 import chat.willow.kale.KaleRouter
+import chat.willow.kale.helper.INamed
 import chat.willow.kale.irc.prefix.Prefix
 import chat.willow.kale.irc.tag.KaleTagRouter
 import io.reactivex.Observer
@@ -43,7 +44,10 @@ class ClientTracker(val connections: IConnectionTracker,
     data class RegisteringClient(val connection: BurrowConnection)
     private val registeringClients: MutableMap<ConnectionId, RegisteringClient> = ConcurrentHashMap()
 
-    data class ConnectedClient(val connection: BurrowConnection, val kale: IKale, val prefix: Prefix)
+    data class ConnectedClient(val connection: BurrowConnection, val kale: IKale, val prefix: Prefix): INamed {
+        override val name: String
+            get() = prefix.nick
+    }
     private val connectedClients: MutableMap<ConnectionId, ConnectedClient> = ConcurrentHashMap()
 
     private val kales: MutableMap<ConnectionId, IKale> = ConcurrentHashMap()

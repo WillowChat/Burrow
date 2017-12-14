@@ -6,10 +6,12 @@ import chat.willow.burrow.state.ClientUseCase
 import chat.willow.burrow.utility.KaleUtilities
 import chat.willow.kale.IKale
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001MessageType
+import chat.willow.kale.irc.prefix.prefix
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.verify
 import org.junit.Before
 import org.junit.Test
+import org.junit.Assert.*
 
 class ClientUseCaseTests {
 
@@ -30,6 +32,24 @@ class ClientUseCaseTests {
         sut.track(client)
 
         verify(mockConnectionTracker).send(id = 1, message = Rpl001MessageType(source = "bunnies", target = "someone", contents = "welcome to burrow"))
+    }
+
+    @Test fun `after tracking a client, we can look them up by username`() {
+        val client = makeClient(mockKale, prefix = prefix(nick = "someone"))
+        sut.track(client)
+
+        val result = sut.lookUpClient(nick = "someone")
+
+        assertEquals("someone", result?.name)
+    }
+
+    @Test fun `if we haven't tracked a client, we can't look them up by username`() {
+        val client = makeClient(mockKale, prefix = prefix(nick = "someone else"))
+        sut.track(client)
+
+        val result = sut.lookUpClient(nick = "someone")
+
+        assertNull(result)
     }
 
 }
