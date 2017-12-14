@@ -64,6 +64,7 @@ class ChannelsUseCase(private val connections: IConnectionTracker): IChannelsUse
             // todo: channel visibility is public
             // todo: Rpl353 should send prefixes
             // todo: split message when there's too many users
+            // todo: permissions for users - @ etc as a prefix
             val users = channel.users.all.values.map { it.prefix.nick }
             val namReplyMessage = Rpl353Message.Message(source = "bunnies", target = client.name, visibility = CharacterCodes.EQUALS.toString(), channel = channel.name, names = users)
 
