@@ -1,5 +1,6 @@
 package chat.willow.burrow.utility
 
+import chat.willow.burrow.Burrow
 import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.connection.line.LineAccumulator
 import chat.willow.burrow.connection.network.ConnectionId
@@ -7,6 +8,8 @@ import chat.willow.burrow.state.ClientTracker
 import chat.willow.burrow.unit.state.message
 import chat.willow.kale.IKale
 import chat.willow.kale.KaleDescriptor
+import chat.willow.kale.helper.CaseInsensitiveNamedMap
+import chat.willow.kale.helper.INamed
 import chat.willow.kale.irc.prefix.Prefix
 import com.nhaarman.mockito_kotlin.any
 import com.nhaarman.mockito_kotlin.mock
@@ -32,6 +35,12 @@ fun makeClient(kale: IKale = KaleUtilities.mockKale(), id: ConnectionId = 1, pre
     val connection = BurrowConnection(id = id, host = prefix.host ?: "", socket = mock(), accumulator = accumulator)
 
     return TestClient(kale = kale, client = ClientTracker.ConnectedClient(connection, kale, prefix))
+}
+
+fun <T : INamed> namedMap(contents: List<T> = listOf()): CaseInsensitiveNamedMap<T> {
+    val store = CaseInsensitiveNamedMap<T>(mapper = Burrow.Server.MAPPER)
+    contents.forEach { store.put(it) }
+    return store
 }
 
 object KaleUtilities {

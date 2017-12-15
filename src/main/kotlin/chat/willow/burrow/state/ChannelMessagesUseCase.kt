@@ -38,6 +38,8 @@ class ChannelMessagesUseCase(private val connections: IConnectionTracker, privat
 
         if (!channels.isNameValid(channelName)) {
             sendInvalidChannelName(client, channelName)
+        } else {
+            handleValidPrivMsg(client, channelName, message)
         }
 
         // todo: validate message
@@ -45,9 +47,33 @@ class ChannelMessagesUseCase(private val connections: IConnectionTracker, privat
         // todo: check client has permissions to send messages to that channel
     }
 
+    private fun sendCannotSendToChan(client: ClientTracker.ConnectedClient, channelName: String, message: String) {
+        val messageToSend = Rpl404MessageType(source = "bunnies", target = client.name, channel = channelName, content = message)
+        connections.send(client.connection.id, messageToSend)
+    }
+
     private fun sendInvalidChannelName(client: ClientTracker.ConnectedClient, channelName: String) {
-        val message = Rpl404MessageType(source = "bunnies", target = client.name, channel = channelName, content = "Invalid channel name")
-        connections.send(client.connection.id, message)
+        sendCannotSendToChan(client, channelName, "Invalid channel name")
+    }
+
+    private fun handleValidPrivMsg(client: ClientTracker.ConnectedClient, channelName: String, message: String) {
+        val channel = channels.channels[channelName]
+        if (channel == null) {
+            sendNonexistentChannel(client, channelName)
+        } else {
+            val userInChannel = channel.users.contains(client.name)
+            if (!userInChannel) {
+                sendUserNotInChannel(client, channelName)
+            }
+        }
+    }
+
+    private fun sendNonexistentChannel(client: ClientTracker.ConnectedClient, channelName: String) {
+        sendCannotSendToChan(client, channelName, "Channel doesn't exist")
+    }
+
+    private fun sendUserNotInChannel(client: ClientTracker.ConnectedClient, channelName: String) {
+        sendCannotSendToChan(client, channelName, "You're not in that channel")
     }
 
 }
