@@ -76,15 +76,7 @@ class ChannelsUseCase(private val connections: IConnectionTracker): IChannelsUse
     }
 
     private fun handleValidJoin(channelName: String, client: ClientTracker.ConnectedClient) {
-        val channel = if (channels.contains(channelName)) {
-            channels[channelName]!! // todo: remove
-        } else {
-            val channel = Channel(name = channelName)
-            channels += channel
-
-            channel
-        }
-
+        val channel = getOrCreateChannel(channelName)
         channel.users += ChannelUser(client.prefix)
 
         val joinMessage = JoinMessage.Message(source = client.prefix, channels = listOf(channel.name))
@@ -95,7 +87,20 @@ class ChannelsUseCase(private val connections: IConnectionTracker): IChannelsUse
         val users = channel.users.all.values.map { it.prefix.nick }
         val namReplyMessage = Rpl353Message.Message(source = "bunnies", target = client.name, visibility = CharacterCodes.EQUALS.toString(), channel = channel.name, names = users)
 
+        // todo: send to everyone in the channel, including the new user
         connections.send(client.connection.id, namReplyMessage)
+    }
+
+    private fun getOrCreateChannel(name: String): Channel {
+        var channel = channels[name]
+        return if (channel == null) {
+            channel = Channel(name = name)
+            channels += channel
+
+            channel
+        } else {
+            channel
+        }
     }
 
     private fun handlePart(observable: KaleObservable<PartMessage.Command>, client: ClientTracker.ConnectedClient) {
