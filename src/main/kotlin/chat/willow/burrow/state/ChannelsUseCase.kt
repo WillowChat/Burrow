@@ -46,7 +46,7 @@ object Rpl403Message : ICommand {
 class ChannelsUseCase(private val connections: IConnectionTracker, val clients: IClientsUseCase): IChannelsUseCase {
 
     private val LOGGER = loggerFor<ChannelsUseCase>()
-    private val MAX_CHANNEL_LENGTH = 16 // todo: check
+    private val MAX_CHANNEL_LENGTH = 18 // todo: check
 
     override val channels = CaseInsensitiveNamedMap<Channel>(mapper = Burrow.Server.MAPPER)
 
@@ -63,14 +63,14 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
     private fun handleJoin(observable: KaleObservable<JoinMessage.Command>, client: ClientTracker.ConnectedClient) {
         observable.message.channels.forEach {
             if (!validateChannelName(it)) {
-                handleInvalidJoin(it, client)
+                sendNoSuchChannel(it, client)
             } else {
                 handleValidJoin(it, client)
             }
         }
     }
 
-    private fun handleInvalidJoin(channelName: String, client: ClientTracker.ConnectedClient) {
+    private fun sendNoSuchChannel(channelName: String, client: ClientTracker.ConnectedClient) {
         val noSuchChannelMessage = Rpl403MessageType(source = "bunnies", target = client.name, channel = channelName, content = "No such channel")
         connections.send(client.connection.id, noSuchChannelMessage)
     }
@@ -108,22 +108,47 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
     }
 
     private fun handlePart(observable: KaleObservable<PartMessage.Command>, client: ClientTracker.ConnectedClient) {
-        // todo: validation
         observable.message.channels.forEach {
-            val channel = channels[it]
-            if (channel == null) {
-                LOGGER.warn("client left a nonexistent channel $it $client")
+            if (!validateChannelName(it, existenceCheck = true)) {
+                sendNoSuchChannel(it, client)
             } else {
-                channels -= channel.name
+                handleValidPart(it, client)
             }
-
-            val message = PartMessage.Message(source = client.prefix, channels = listOf(it))
-            connections.send(client.connection.id, message)
         }
     }
 
-    private fun validateChannelName(name: String): Boolean {
-        return !name.isEmpty() && name.length <= MAX_CHANNEL_LENGTH && channel.test(name)
+    private fun handleValidPart(channelName: String, client: ClientTracker.ConnectedClient) {
+        val channel = channels[channelName]
+        if (channel == null) {
+            LOGGER.warn("client left a nonexistent channel $channelName $client")
+            return
+        }
+
+        channel.users -= client.name
+        if (channel.users.all.isEmpty()) {
+            channels -= channelName
+        }
+
+        val message = PartMessage.Message(source = client.prefix, channels = listOf(channelName))
+        connections.send(client.connection.id, message)
+
+        // todo: batch sending up?
+        val users = channel.users.all.values.map { it.prefix.nick }
+        val otherUsers = (users.toSet() - client.name).mapNotNull { clients.lookUpClient(it) }
+        otherUsers.forEach {
+            connections.send(it.connection.id, PartMessage.Message(source = client.prefix, channels = listOf(channel.name)))
+        }
+    }
+
+    private fun validateChannelName(name: String, existenceCheck: Boolean = false): Boolean {
+        val validation = !name.isEmpty() && name.length <= MAX_CHANNEL_LENGTH && channel.test(name)
+        val existence = if (existenceCheck) {
+            channels.contains(name)
+        } else {
+            true
+        }
+
+        return validation && existence
     }
 
 }

@@ -138,7 +138,7 @@ class ChannelsUseCaseTests {
         assertEquals(1, sut.channels.all.keys.count())
     }
 
-    @Test fun `when a client leaves a channel, it is destroyed`() {
+    @Test fun `when a client leaves a channel, and it is then empty, it is destroyed`() {
         val testClient = makeClient()
         val joins = testClient.mock(JoinMessage.Command.Descriptor)
         val parts = testClient.mock(PartMessage.Command.Descriptor)
@@ -150,20 +150,42 @@ class ChannelsUseCaseTests {
         assertFalse(sut.channels.contains("#existing_channel"))
     }
 
+    @Test fun `when a client leaves a channel, and it still has users, it is not destroyed`() {
+        val testClientOne = makeClient(id = 1, prefix = prefix("someone"))
+        val testClientTwo = makeClient(id = 2, prefix = prefix("someone_else"))
+        val clientOneParts = testClientOne.mock(PartMessage.Command.Descriptor)
+        val clientOneJoins = testClientOne.mock(JoinMessage.Command.Descriptor)
+        val clientTwoJoins = testClientTwo.mock(JoinMessage.Command.Descriptor)
+        sut.track(testClientOne.client)
+        sut.track(testClientTwo.client)
+        clientOneJoins.onNext(JoinMessage.Command(channels = listOf("#existing_channel")))
+        clientTwoJoins.onNext(JoinMessage.Command(channels = listOf("#existing_channel")))
+
+        clientOneParts.onNext(PartMessage.Command(channels = listOf("#existing_channel")))
+
+        assertTrue(sut.channels.contains("#existing_channel"))
+    }
+
     @Test fun `when a client leaves a channel, they get a PART reply`() {
-        val testClient = makeClient()
-        val parts = testClient.mock(PartMessage.Command.Descriptor)
-        sut.track(testClient.client)
+        val testClientOne = makeClient(id = 1, prefix = prefix("someone"))
+        val testClientTwo = makeClient(id = 2, prefix = prefix("someone_else"))
+        val clientOneParts = testClientOne.mock(PartMessage.Command.Descriptor)
+        val clientTwoJoins = testClientOne.mock(JoinMessage.Command.Descriptor)
+        sut.track(testClientOne.client)
+        sut.track(testClientTwo.client)
+        clientTwoJoins.onNext(JoinMessage.Command(channels = listOf("#existing_channel")))
 
-        parts.onNext(PartMessage.Command(channels = listOf("#existing_channel")))
+        clientOneParts.onNext(PartMessage.Command(channels = listOf("#existing_channel")))
 
-        verify(mockConnections).send(id = 1, message = PartMessage.Message(source = testClient.prefix, channels = listOf("#existing_channel")))
+        verify(mockConnections).send(id = 1, message = PartMessage.Message(source = testClientOne.prefix, channels = listOf("#existing_channel")))
     }
 
     @Test fun `when a client parts multiple channels, each gets a PART`() {
         val testClient = makeClient()
+        val joins = testClient.mock(JoinMessage.Command.Descriptor)
         val parts = testClient.mock(PartMessage.Command.Descriptor)
         sut.track(testClient.client)
+        joins.onNext(JoinMessage.Command(channels = listOf("#somewhere", "#somewhere_else")))
 
         parts.onNext(PartMessage.Command(channels = listOf("#somewhere", "#somewhere_else")))
 
@@ -181,6 +203,30 @@ class ChannelsUseCaseTests {
         joins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
 
         assertTrue(sut.channels["#somewhere"]?.users?.contains("someone") ?: false)
+    }
+
+    @Test fun `when a client parts a channel, and the channel wasn't empty, send a PART to all the other clients`() {
+        val testClientOne = makeClient(id = 1, prefix = Prefix(nick = "someone"))
+        val clientOneJoins = testClientOne.mock(JoinMessage.Command.Descriptor)
+        val clientOneParts = testClientOne.mock(PartMessage.Command.Descriptor)
+        val testClientTwo = makeClient(id = 2, prefix = Prefix(nick = "someone_else"))
+        val clientTwoJoins = testClientTwo.mock(JoinMessage.Command.Descriptor)
+        val clientTwoParts = testClientTwo.mock(PartMessage.Command.Descriptor)
+        sut.track(testClientOne.client)
+        sut.track(testClientTwo.client)
+        whenever(mockClients.lookUpClient("someone")).thenReturn(testClientOne.client)
+        whenever(mockClients.lookUpClient("someone_else")).thenReturn(testClientTwo.client)
+        clientOneJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
+        clientTwoJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
+
+        clientOneParts.onNext(PartMessage.Command(channels = listOf("#somewhere")))
+        clientTwoParts.onNext(PartMessage.Command(channels = listOf("#somewhere")))
+
+        inOrder(mockConnections) {
+            verify(mockConnections).send(id = 1, message = PartMessage.Message(source = prefix("someone"), channels = listOf("#somewhere")))
+            verify(mockConnections).send(id = 2, message = PartMessage.Message(source = prefix("someone"), channels = listOf("#somewhere")))
+            verify(mockConnections).send(id = 2, message = PartMessage.Message(source = prefix("someone_else"), channels = listOf("#somewhere")))
+        }
     }
 
     @Test fun `when a two clients JOIN a channel, the channel contains both of them`() {

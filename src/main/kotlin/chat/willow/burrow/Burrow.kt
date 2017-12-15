@@ -10,10 +10,7 @@ import chat.willow.kale.*
 import chat.willow.kale.helper.CaseMapping
 import chat.willow.kale.helper.ICaseMapper
 import chat.willow.kale.irc.message.extension.cap.CapMessage
-import chat.willow.kale.irc.message.rfc1459.JoinMessage
-import chat.willow.kale.irc.message.rfc1459.PingMessage
-import chat.willow.kale.irc.message.rfc1459.PongMessage
-import chat.willow.kale.irc.message.rfc1459.PrivMsgMessage
+import chat.willow.kale.irc.message.rfc1459.*
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001Message
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001MessageType
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl353Message
@@ -65,6 +62,7 @@ object Burrow {
 
     fun createKale(router: IKaleRouter, metadataFactory: IKaleMetadataFactory): IKale {
         router.register(JoinMessage.Message::class, JoinMessage.Message.Serialiser)
+        router.register(PartMessage.Message::class, PartMessage.Message.Serialiser)
         router.register(PrivMsgMessage.Message::class, PrivMsgMessage.Message.Serialiser)
         router.register(Rpl001MessageType::class, Rpl001Message.Serialiser)
         router.register(Rpl353Message.Message::class, Rpl353Message.Message.Serialiser)
