@@ -9,7 +9,7 @@ import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001MessageType
 import io.reactivex.Observer
 import io.reactivex.subjects.PublishSubject
 
-interface IClientUseCase {
+interface IClientsUseCase {
 
     fun lookUpClient(nick: String): ClientTracker.ConnectedClient?
 
@@ -18,11 +18,11 @@ interface IClientUseCase {
 
 }
 
-class ClientUseCase(val connections: IConnectionTracker): IClientUseCase {
+class ClientsUseCase(val connections: IConnectionTracker): IClientsUseCase {
 
-    private val LOGGER = loggerFor<ClientUseCase>()
+    private val LOGGER = loggerFor<ClientsUseCase>()
 
-    private val channels = ChannelsUseCase(connections)
+    private val channels = ChannelsUseCase(connections, this)
     private val ping = PingUseCase(connections)
 
     private val clients = CaseInsensitiveNamedMap<ClientTracker.ConnectedClient>(mapper = Burrow.Server.MAPPER)

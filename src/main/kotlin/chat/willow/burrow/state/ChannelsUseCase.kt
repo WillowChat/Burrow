@@ -43,7 +43,7 @@ object Rpl403Message : ICommand {
 
 }
 
-class ChannelsUseCase(private val connections: IConnectionTracker): IChannelsUseCase {
+class ChannelsUseCase(private val connections: IConnectionTracker, val clients: IClientsUseCase): IChannelsUseCase {
 
     private val LOGGER = loggerFor<ChannelsUseCase>()
     private val MAX_CHANNEL_LENGTH = 16 // todo: check
@@ -86,9 +86,13 @@ class ChannelsUseCase(private val connections: IConnectionTracker): IChannelsUse
         // todo: permissions for users - @ etc as a prefix
         val users = channel.users.all.values.map { it.prefix.nick }
         val namReplyMessage = Rpl353Message.Message(source = "bunnies", target = client.name, visibility = CharacterCodes.EQUALS.toString(), channel = channel.name, names = users)
-
-        // todo: send to everyone in the channel, including the new user
         connections.send(client.connection.id, namReplyMessage)
+
+        // todo: batch sending up?
+        val otherUsers = (users.toSet() - client.name).mapNotNull { clients.lookUpClient(it) }
+        otherUsers.forEach {
+            connections.send(it.connection.id, JoinMessage.Message(source = client.prefix, channels = listOf(channel.name)))
+        }
     }
 
     private fun getOrCreateChannel(name: String): Channel {

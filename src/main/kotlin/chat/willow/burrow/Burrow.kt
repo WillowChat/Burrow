@@ -9,7 +9,6 @@ import chat.willow.burrow.state.*
 import chat.willow.kale.*
 import chat.willow.kale.helper.CaseMapping
 import chat.willow.kale.helper.ICaseMapper
-import chat.willow.kale.irc.CharacterCodes
 import chat.willow.kale.irc.message.extension.cap.CapMessage
 import chat.willow.kale.irc.message.rfc1459.JoinMessage
 import chat.willow.kale.irc.message.rfc1459.PingMessage
@@ -43,10 +42,10 @@ object Burrow {
         val connectionTracker = ConnectionTracker(socketProcessor, bufferSize = Server.MAX_LINE_LENGTH, connectionFactory = BurrowConnectionFactory)
         val kale = createKale(KaleRouter(), KaleMetadataFactory(KaleTagRouter()))
         val registrationUseCase = RegistrationUseCase(connectionTracker)
-        val clientUseCase = ClientUseCase(connectionTracker)
+        val clientUseCase = ClientsUseCase(connectionTracker)
 
         val supportedCaps = mapOf<String, String?>("cap-notify" to null)
-        val clientTracker = ClientTracker(connections = connectionTracker, registrationUseCase = registrationUseCase, supportedCaps = supportedCaps, clientUseCase = clientUseCase)
+        val clientTracker = ClientTracker(connections = connectionTracker, registrationUseCase = registrationUseCase, supportedCaps = supportedCaps, clientsUseCase = clientUseCase)
         connectionTracker.kale = kale
 
         connectionTracker.tracked

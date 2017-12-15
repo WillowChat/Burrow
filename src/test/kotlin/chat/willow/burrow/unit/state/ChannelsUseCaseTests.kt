@@ -3,6 +3,7 @@ package chat.willow.burrow.unit.state
 import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.state.ChannelsUseCase
+import chat.willow.burrow.state.IClientsUseCase
 import chat.willow.burrow.state.Rpl403MessageType
 import chat.willow.kale.irc.CharacterCodes
 import chat.willow.kale.irc.message.rfc1459.JoinMessage
@@ -13,6 +14,7 @@ import chat.willow.kale.irc.prefix.prefix
 import com.nhaarman.mockito_kotlin.inOrder
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.verify
+import com.nhaarman.mockito_kotlin.whenever
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -22,11 +24,13 @@ class ChannelsUseCaseTests {
     private lateinit var sut: ChannelsUseCase
 
     private lateinit var mockConnections: IConnectionTracker
+    private lateinit var mockClients: IClientsUseCase
 
     @Before fun setUp() {
         mockConnections = mock()
+        mockClients = mock()
 
-        sut = ChannelsUseCase(mockConnections)
+        sut = ChannelsUseCase(mockConnections, mockClients)
     }
 
     @Test fun `when a client sends a JOIN message, with a valid channel name, reply with a JOIN`() {
@@ -77,6 +81,26 @@ class ChannelsUseCaseTests {
         val names = listOf("someone", "someone_else")
         val message = Rpl353Message.Message(source = "bunnies", target = "someone_else", visibility = CharacterCodes.EQUALS.toString(), channel = "#somewhere", names = names)
         verify(mockConnections).send(id = 2, message = message)
+    }
+
+    @Test fun `when a client joins a channel, and the channel wasn't empty, send a JOIN to all the other clients`() {
+        val testClientOne = makeClient(id = 1, prefix = Prefix(nick = "someone"))
+        val clientOneJoins = testClientOne.mock(JoinMessage.Command.Descriptor)
+        val testClientTwo = makeClient(id = 2, prefix = Prefix(nick = "someone_else"))
+        val clientTwoJoins = testClientTwo.mock(JoinMessage.Command.Descriptor)
+        sut.track(testClientOne.client)
+        sut.track(testClientTwo.client)
+        whenever(mockClients.lookUpClient("someone")).thenReturn(testClientOne.client)
+        whenever(mockClients.lookUpClient("someone_else")).thenReturn(testClientTwo.client)
+
+        clientOneJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
+        clientTwoJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
+
+        inOrder(mockConnections) {
+            verify(mockConnections).send(id = 1, message = JoinMessage.Message(source = prefix("someone"), channels = listOf("#somewhere")))
+            verify(mockConnections).send(id = 2, message = JoinMessage.Message(source = prefix("someone_else"), channels = listOf("#somewhere")))
+            verify(mockConnections).send(id = 1, message = JoinMessage.Message(source = prefix("someone_else"), channels = listOf("#somewhere")))
+        }
     }
 
     @Test fun `when a client joins multiple channels, each gets a JOIN`() {

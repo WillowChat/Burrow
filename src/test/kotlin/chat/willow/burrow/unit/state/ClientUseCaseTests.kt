@@ -2,7 +2,7 @@ package chat.willow.burrow.unit.state
 
 import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.utility.makeClient
-import chat.willow.burrow.state.ClientUseCase
+import chat.willow.burrow.state.ClientsUseCase
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001MessageType
 import chat.willow.kale.irc.prefix.prefix
 import com.nhaarman.mockito_kotlin.mock
@@ -13,13 +13,13 @@ import org.junit.Assert.*
 
 class ClientUseCaseTests {
 
-    private lateinit var sut: ClientUseCase
+    private lateinit var sut: ClientsUseCase
     private lateinit var mockConnectionTracker: IConnectionTracker
 
     @Before fun setUp() {
         mockConnectionTracker = mock()
 
-        sut = ClientUseCase(connections = mockConnectionTracker)
+        sut = ClientsUseCase(connections = mockConnectionTracker)
     }
 
     @Test fun `when a client is tracked, they're sent an MOTD`() {
