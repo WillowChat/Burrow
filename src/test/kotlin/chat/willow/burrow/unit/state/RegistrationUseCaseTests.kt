@@ -5,6 +5,7 @@ import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.connection.line.ILineAccumulator
 import chat.willow.burrow.connection.network.INetworkSocket
 import chat.willow.burrow.state.RegistrationUseCase
+import chat.willow.burrow.utility.mockKaleObservable
 import chat.willow.kale.IKale
 import chat.willow.kale.KaleDescriptor
 import chat.willow.kale.KaleObservable
@@ -148,13 +149,6 @@ class RegistrationUseCaseTests {
         observer.assertValue(RegistrationUseCase.Registered(Prefix(nick = "nickname", user = "username", host = "host"), caps = setOf()))
     }
 
-}
-
-inline fun <reified T> mockKaleObservable(kale: IKale, descriptor: KaleDescriptor<T>): PublishSubject<T> {
-    val messageSubject = PublishSubject.create<T>()
-    val kaleObservableSubject = messageSubject.map { message(it) }
-    whenever(kale.observe(descriptor)).thenReturn(kaleObservableSubject)
-    return messageSubject
 }
 
 fun <T> message(message: T): KaleObservable<T> {
