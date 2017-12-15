@@ -24,6 +24,7 @@ class ClientsUseCase(val connections: IConnectionTracker): IClientsUseCase {
 
     private val channels = ChannelsUseCase(connections, this)
     private val ping = PingUseCase(connections)
+    private val channelMessages = ChannelMessagesUseCase(connections, channels)
 
     private val clients = CaseInsensitiveNamedMap<ClientTracker.ConnectedClient>(mapper = Burrow.Server.MAPPER)
 
@@ -40,6 +41,7 @@ class ClientsUseCase(val connections: IConnectionTracker): IClientsUseCase {
 
         ping.track(client)
         channels.track(client)
+        channelMessages.track(client)
 
         clients += client
         LOGGER.info("tracked client ${client.connection.id}")

@@ -19,6 +19,7 @@ interface IChannelsUseCase {
 
     val channels: CaseInsensitiveNamedMap<Channel>
     fun track(client: ClientTracker.ConnectedClient)
+    fun isNameValid(name: String, existenceCheck: Boolean = false): Boolean
 
 }
 
@@ -62,7 +63,7 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
 
     private fun handleJoin(observable: KaleObservable<JoinMessage.Command>, client: ClientTracker.ConnectedClient) {
         observable.message.channels.forEach {
-            if (!validateChannelName(it)) {
+            if (!isNameValid(it)) {
                 sendNoSuchChannel(it, client)
             } else {
                 handleValidJoin(it, client)
@@ -109,7 +110,7 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
 
     private fun handlePart(observable: KaleObservable<PartMessage.Command>, client: ClientTracker.ConnectedClient) {
         observable.message.channels.forEach {
-            if (!validateChannelName(it, existenceCheck = true)) {
+            if (!isNameValid(it, existenceCheck = true)) {
                 sendNoSuchChannel(it, client)
             } else {
                 handleValidPart(it, client)
@@ -140,7 +141,7 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
         }
     }
 
-    private fun validateChannelName(name: String, existenceCheck: Boolean = false): Boolean {
+    override fun isNameValid(name: String, existenceCheck: Boolean): Boolean {
         val validation = !name.isEmpty() && name.length <= MAX_CHANNEL_LENGTH && channel.test(name)
         val existence = if (existenceCheck) {
             channels.contains(name)
