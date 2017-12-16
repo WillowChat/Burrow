@@ -64,6 +64,12 @@ jacocoTestReport.doFirst {
     jacocoTestReport.reports.html.isEnabled = true
 }
 
+jar {
+    manifest {
+        this.attributes += "Main-Class" to "chat.willow.burrow.Burrow"
+    }
+}
+
 compileJava {
     sourceCompatibility = JavaVersion.VERSION_1_7.toString()
     targetCompatibility = JavaVersion.VERSION_1_7.toString()
