@@ -12,7 +12,6 @@ import chat.willow.kale.helper.ICaseMapper
 import chat.willow.kale.irc.message.extension.cap.CapMessage
 import chat.willow.kale.irc.message.rfc1459.*
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001Message
-import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001MessageType
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl353Message
 import chat.willow.kale.irc.message.utility.RawMessage
 import chat.willow.kale.irc.tag.KaleTagRouter
@@ -38,8 +37,8 @@ object Burrow {
         val socketProcessor = SocketProcessor(nioWrapper, buffer, interruptedChecker)
         val connectionTracker = ConnectionTracker(socketProcessor, bufferSize = Server.MAX_LINE_LENGTH, connectionFactory = BurrowConnectionFactory)
         val kale = createKale(KaleRouter(), KaleMetadataFactory(KaleTagRouter()))
-        val registrationUseCase = RegistrationUseCase(connectionTracker)
         val clientUseCase = ClientsUseCase(connectionTracker)
+        val registrationUseCase = RegistrationUseCase(connectionTracker, clientUseCase)
 
         val supportedCaps = mapOf<String, String?>("cap-notify" to null)
         val clientTracker = ClientTracker(connections = connectionTracker, registrationUseCase = registrationUseCase, supportedCaps = supportedCaps, clientsUseCase = clientUseCase)
@@ -64,14 +63,20 @@ object Burrow {
         router.register(JoinMessage.Message::class, JoinMessage.Message.Serialiser)
         router.register(PartMessage.Message::class, PartMessage.Message.Serialiser)
         router.register(PrivMsgMessage.Message::class, PrivMsgMessage.Message.Serialiser)
-        router.register(Rpl001MessageType::class, Rpl001Message.Serialiser)
+
+
+        // todo: reuse code without messageClass clashing b/c of typealias
+        router.register(Rpl001Message.Message::class, Rpl001Message.Serialiser)
+        router.register(Rpl433Message.Message::class, Rpl433Message.Serialiser)
+        router.register(Rpl403Message.Message::class, Rpl403Message.Serialiser)
         router.register(Rpl353Message.Message::class, Rpl353Message.Message.Serialiser)
+
         router.register(PingMessage.Command::class, PingMessage.Command.Serialiser)
         router.register(PongMessage.Message::class, PongMessage.Message.Serialiser)
         router.register(CapMessage.Ls.Message::class, CapMessage.Ls.Message.Serialiser)
         router.register(CapMessage.Ack.Message::class, CapMessage.Ack.Message.Serialiser)
         router.register(CapMessage.Nak.Message::class, CapMessage.Nak.Message.Serialiser)
-        router.register(Rpl403MessageType::class, Rpl403Message.Serialiser)
+
 
         router.register(RawMessage.Line::class, RawMessage.Line.Serialiser)
 
@@ -80,6 +85,7 @@ object Burrow {
 
     object Validation {
         val alphanumeric = Pattern.compile("^[a-zA-Z0-9]*$").asPredicate()
+        val nick = Pattern.compile("^[a-zA-Z0-9]+[_]*$").asPredicate()
         val channel = Pattern.compile("^#[a-zA-Z0-9_]+$").asPredicate()
     }
 

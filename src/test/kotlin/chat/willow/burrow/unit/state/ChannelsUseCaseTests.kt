@@ -4,7 +4,7 @@ import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.state.ChannelsUseCase
 import chat.willow.burrow.state.IClientsUseCase
-import chat.willow.burrow.state.Rpl403MessageType
+import chat.willow.burrow.state.Rpl403Message
 import chat.willow.kale.irc.CharacterCodes
 import chat.willow.kale.irc.message.rfc1459.JoinMessage
 import chat.willow.kale.irc.message.rfc1459.PartMessage
@@ -50,7 +50,7 @@ class ChannelsUseCaseTests {
 
         joins.onNext(JoinMessage.Command(channels = listOf("#somewhere!")))
 
-        val message = Rpl403MessageType(source = "bunnies", target = "someone", channel = "#somewhere!", content = "No such channel")
+        val message = Rpl403Message.Message(source = "bunnies", target = "someone", channel = "#somewhere!", content = "No such channel")
         verify(mockConnections).send(id = 1, message = message)
     }
 

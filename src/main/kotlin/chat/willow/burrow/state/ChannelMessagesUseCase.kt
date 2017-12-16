@@ -14,11 +14,12 @@ interface IChannelMessagesUseCase {
 }
 
 // todo: move in to Kale
-typealias Rpl404MessageType = RplSourceTargetChannelContent.Message
+
 object Rpl404Message : ICommand {
 
     override val command = "404"
 
+    class Message(source: String, target: String, channel: String, content: String): RplSourceTargetChannelContent.Message(source, target, channel, content)
     object Parser : RplSourceTargetChannelContent.Parser(command)
     object Serialiser : RplSourceTargetChannelContent.Serialiser(command)
     object Descriptor : RplSourceTargetChannelContent.Descriptor(command, Parser)
@@ -49,7 +50,7 @@ class ChannelMessagesUseCase(private val connections: IConnectionTracker, privat
     }
 
     private fun sendCannotSendToChan(client: ClientTracker.ConnectedClient, channelName: String, message: String) {
-        val messageToSend = Rpl404MessageType(source = "bunnies", target = client.name, channel = channelName, content = message)
+        val messageToSend = Rpl404Message.Message(source = "bunnies", target = client.name, channel = channelName, content = message)
         connections.send(client.connection.id, messageToSend)
     }
 

@@ -33,11 +33,12 @@ data class ChannelUser(val prefix: Prefix): INamed {
 }
 
 // todo: move in to Kale
-typealias Rpl403MessageType = RplSourceTargetChannelContent.Message
+
 object Rpl403Message : ICommand {
 
     override val command = "403"
 
+    class Message(source: String, target: String, channel: String, content: String): RplSourceTargetChannelContent.Message(source, target, channel, content)
     object Parser : RplSourceTargetChannelContent.Parser(command)
     object Serialiser : RplSourceTargetChannelContent.Serialiser(command)
     object Descriptor : RplSourceTargetChannelContent.Descriptor(command, Parser)
@@ -72,7 +73,7 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
     }
 
     private fun sendNoSuchChannel(channelName: String, client: ClientTracker.ConnectedClient) {
-        val noSuchChannelMessage = Rpl403MessageType(source = "bunnies", target = client.name, channel = channelName, content = "No such channel")
+        val noSuchChannelMessage = Rpl403Message.Message(source = "bunnies", target = client.name, channel = channelName, content = "No such channel")
         connections.send(client.connection.id, noSuchChannelMessage)
     }
 

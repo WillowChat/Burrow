@@ -1,13 +1,18 @@
 package chat.willow.burrow.state
 
+import chat.willow.burrow.Burrow
 import chat.willow.burrow.Burrow.Validation.alphanumeric
+import chat.willow.burrow.Burrow.Validation.nick
 import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.helper.loggerFor
+import chat.willow.kale.ICommand
 import chat.willow.kale.IKale
 import chat.willow.kale.irc.message.extension.cap.CapMessage
 import chat.willow.kale.irc.message.rfc1459.NickMessage
 import chat.willow.kale.irc.message.rfc1459.UserMessage
+import chat.willow.kale.irc.message.rfc1459.rpl.RplSourceTargetChannelContent
+import chat.willow.kale.irc.message.rfc1459.rpl.RplSourceTargetContent
 import chat.willow.kale.irc.prefix.Prefix
 import io.reactivex.Observable
 import io.reactivex.Scheduler
@@ -22,7 +27,20 @@ interface IRegistrationUseCase {
 
 }
 
-class RegistrationUseCase(private val connections: IConnectionTracker, private val scheduler: Scheduler = Schedulers.computation()): IRegistrationUseCase {
+// todo: move in to Kale
+
+object Rpl433Message : ICommand {
+
+    override val command = "433"
+
+    class Message(source: String, target: String, content: String): RplSourceTargetContent.Message(source, target, content)
+    object Parser : RplSourceTargetContent.Parser(command)
+    object Serialiser : RplSourceTargetContent.Serialiser(command)
+    object Descriptor : RplSourceTargetContent.Descriptor(command, Parser)
+
+}
+
+class RegistrationUseCase(private val connections: IConnectionTracker, private val clients: IClientsUseCase, private val scheduler: Scheduler = Schedulers.computation()): IRegistrationUseCase {
 
     private val LOGGER = loggerFor<RegistrationUseCase>()
 
@@ -42,6 +60,19 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
 
         val validatedNicks = nicks.map { it.message.nickname to validateNick(it.message.nickname) }
                 .filter { it.second }
+                .map { it.first }
+
+        val existenceCheckedNicks = validatedNicks
+                .map { it to isNickTaken(it) }
+                .share()
+
+        existenceCheckedNicks
+                .filter { it.second }
+                .map { it.first to connection }
+                .subscribe(this::sendAlreadyExists)
+
+        val nonExistentNicks = existenceCheckedNicks
+                .filter { !it.second }
                 .map { it.first }
 
         val capEnd = kale.observe(CapMessage.End.Command.Descriptor).share()
@@ -85,7 +116,7 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
                 .map { true }
                 .share()
 
-        val userAndNick = Observables.combineLatest(validatedUsers, validatedNicks).share()
+        val userAndNick = Observables.combineLatest(validatedUsers, nonExistentNicks).share()
 
         val rfc1459Registration = userAndNick
                 .takeUntil(startedNegotiatingCaps)
@@ -112,8 +143,18 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
                 .take(1)
     }
 
-    private fun validateUser(user: String): Boolean = !user.isEmpty() && user.length <= MAX_USER_LENGTH && alphanumeric.test(user)
+    private fun validateUser(user: String): Boolean = !user.isEmpty() && user.length <= MAX_USER_LENGTH && nick.test(user)
 
-    private fun validateNick(nick: String): Boolean = !nick.isEmpty() && nick.length <= MAX_NICK_LENGTH && alphanumeric.test(nick)
+    private fun validateNick(nick: String): Boolean = !nick.isEmpty() && nick.length <= MAX_NICK_LENGTH && Burrow.Validation.nick.test(nick)
+
+    private fun isNickTaken(nick: String): Boolean {
+        return clients.lookUpClient(nick) != null
+    }
+
+    private fun sendAlreadyExists(nickAndConnection: Pair<String, BurrowConnection>) {
+        val (nick, connection) = nickAndConnection
+        val message = Rpl433Message.Message(source = "bunnies", target = nick, content = "Nickname is already in use")
+        connections.send(connection.id, message)
+    }
 
 }

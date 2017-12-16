@@ -4,10 +4,12 @@ import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.connection.line.ILineAccumulator
 import chat.willow.burrow.connection.network.INetworkSocket
+import chat.willow.burrow.state.IClientsUseCase
 import chat.willow.burrow.state.RegistrationUseCase
+import chat.willow.burrow.state.Rpl433Message
+import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.utility.mockKaleObservable
 import chat.willow.kale.IKale
-import chat.willow.kale.KaleDescriptor
 import chat.willow.kale.KaleObservable
 import chat.willow.kale.irc.message.extension.cap.CapMessage
 import chat.willow.kale.irc.message.rfc1459.NickMessage
@@ -15,6 +17,7 @@ import chat.willow.kale.irc.message.rfc1459.UserMessage
 import chat.willow.kale.irc.prefix.Prefix
 import chat.willow.kale.irc.tag.TagStore
 import com.nhaarman.mockito_kotlin.mock
+import com.nhaarman.mockito_kotlin.verify
 import com.nhaarman.mockito_kotlin.whenever
 import io.reactivex.schedulers.TestScheduler
 import io.reactivex.subjects.PublishSubject
@@ -26,7 +29,8 @@ import java.util.concurrent.TimeoutException
 class RegistrationUseCaseTests {
 
     private lateinit var sut: RegistrationUseCase
-    private lateinit var mockConnectionTracker: IConnectionTracker
+    private lateinit var mockConnections: IConnectionTracker
+    private lateinit var mockClients: IClientsUseCase
 
     private lateinit var mockSocket: INetworkSocket
     private lateinit var mockAccumulator: ILineAccumulator
@@ -46,7 +50,8 @@ class RegistrationUseCaseTests {
     @Before fun setUp() {
         mockSocket = mock()
         mockAccumulator = mock()
-        mockConnectionTracker = mock()
+        mockConnections = mock()
+        mockClients = mock()
 
         mockKale = mock()
         connection = BurrowConnection(id = 0, host = "host", socket = mockSocket, accumulator = mockAccumulator)
@@ -59,7 +64,7 @@ class RegistrationUseCaseTests {
 
         scheduler = TestScheduler()
 
-        sut = RegistrationUseCase(mockConnectionTracker, scheduler)
+        sut = RegistrationUseCase(mockConnections, mockClients, scheduler)
     }
 
     @Test fun `single USER and NICK results in registration without caps`() {
@@ -147,6 +152,17 @@ class RegistrationUseCaseTests {
         mockCapEnd.onNext(CapMessage.End.Command)
 
         observer.assertValue(RegistrationUseCase.Registered(Prefix(nick = "nickname", user = "username", host = "host"), caps = setOf()))
+    }
+
+    @Test fun `negotiation with a valid nick, which is already taken by another user, results in an error`() {
+        val observer = sut.track(mockKale, mapOf(), connection).test()
+        val testClient = makeClient()
+        whenever(mockClients.lookUpClient("alreadyTakenNick")).thenReturn(testClient.client)
+        mockUser.onNext(UserMessage.Command("username", "*", "realname"))
+        mockNick.onNext(NickMessage.Command("alreadyTakenNick"))
+
+        observer.assertEmpty()
+        verify(mockConnections).send(id = connection.id, message = Rpl433Message.Message(source = "bunnies", target = "alreadyTakenNick", content = "Nickname is already in use"))
     }
 
 }

@@ -5,7 +5,7 @@ import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.helper.CaseInsensitiveNamedMap
-import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001MessageType
+import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001Message
 import io.reactivex.Observer
 import io.reactivex.subjects.PublishSubject
 
@@ -37,7 +37,7 @@ class ClientsUseCase(val connections: IConnectionTracker): IClientsUseCase {
     }
 
     private fun track(client: ClientTracker.ConnectedClient) {
-        connections.send(client.connection.id, Rpl001MessageType(source = "bunnies", target = client.prefix.nick, contents = "welcome to burrow"))
+        connections.send(client.connection.id, Rpl001Message.Message(source = "bunnies", target = client.prefix.nick, content = "welcome to burrow"))
 
         ping.track(client)
         channels.track(client)
