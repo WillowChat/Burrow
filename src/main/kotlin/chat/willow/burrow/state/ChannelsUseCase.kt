@@ -3,6 +3,7 @@ package chat.willow.burrow.state
 import chat.willow.burrow.Burrow
 import chat.willow.burrow.Burrow.Validation.channel
 import chat.willow.burrow.connection.IConnectionTracker
+import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.ICommand
 import chat.willow.kale.KaleObservable
@@ -14,6 +15,9 @@ import chat.willow.kale.irc.message.rfc1459.PartMessage
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl353Message
 import chat.willow.kale.irc.message.rfc1459.rpl.RplSourceTargetChannelContent
 import chat.willow.kale.irc.prefix.Prefix
+import io.reactivex.Observable
+import io.reactivex.Observer
+import io.reactivex.subjects.PublishSubject
 
 interface IChannelsUseCase {
 
@@ -60,6 +64,14 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
         client.kale
                 .observe(PartMessage.Command.Descriptor)
                 .subscribe { handlePart(it, client) }
+
+        clients.dropped
+                .map { it to channelsForUser(it.name) }
+                .subscribe { (client, channels) ->
+                    channels.forEach {
+                        handleValidPart(it.name, client)
+                    }
+                }
     }
 
     private fun handleJoin(observable: KaleObservable<JoinMessage.Command>, client: ClientTracker.ConnectedClient) {
@@ -73,7 +85,7 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
     }
 
     private fun sendNoSuchChannel(channelName: String, client: ClientTracker.ConnectedClient) {
-        val noSuchChannelMessage = Rpl403Message.Message(source = "bunnies", target = client.name, channel = channelName, content = "No such channel")
+        val noSuchChannelMessage = Rpl403Message.Message(source = "bunnies.", target = client.name, channel = channelName, content = "No such channel")
         connections.send(client.connection.id, noSuchChannelMessage)
     }
 
@@ -87,7 +99,7 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
         // todo: split message when there's too many users
         // todo: permissions for users - @ etc as a prefix
         val users = channel.users.all.values.map { it.prefix.nick }
-        val namReplyMessage = Rpl353Message.Message(source = "bunnies", target = client.name, visibility = CharacterCodes.EQUALS.toString(), channel = channel.name, names = users)
+        val namReplyMessage = Rpl353Message.Message(source = "bunnies.", target = client.name, visibility = CharacterCodes.EQUALS.toString(), channel = channel.name, names = users)
         connections.send(client.connection.id, namReplyMessage)
 
         // todo: batch sending up?
@@ -151,6 +163,10 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
         }
 
         return validation && existence
+    }
+
+    private fun channelsForUser(nick: String): List<Channel> {
+        return channels.all.values.filter { it.users.contains(nick) }
     }
 
 }

@@ -27,7 +27,7 @@ class ClientUseCaseTests {
 
         sut.track.onNext(client)
 
-        verify(mockConnectionTracker).send(id = 1, message = Rpl001Message.Message(source = "bunnies", target = "someone", content = "welcome to burrow"))
+        verify(mockConnectionTracker).send(id = 1, message = Rpl001Message.Message(source = "bunnies.", target = "someone", content = "welcome to burrow"))
     }
 
     @Test fun `after tracking a client, we can look them up by username`() {

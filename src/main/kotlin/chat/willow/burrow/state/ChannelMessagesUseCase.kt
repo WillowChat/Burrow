@@ -50,7 +50,7 @@ class ChannelMessagesUseCase(private val connections: IConnectionTracker, privat
     }
 
     private fun sendCannotSendToChan(client: ClientTracker.ConnectedClient, channelName: String, message: String) {
-        val messageToSend = Rpl404Message.Message(source = "bunnies", target = client.name, channel = channelName, content = message)
+        val messageToSend = Rpl404Message.Message(source = "bunnies.", target = client.name, channel = channelName, content = message)
         connections.send(client.connection.id, messageToSend)
     }
 

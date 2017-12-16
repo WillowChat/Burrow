@@ -15,6 +15,7 @@ import com.nhaarman.mockito_kotlin.inOrder
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.verify
 import com.nhaarman.mockito_kotlin.whenever
+import io.reactivex.subjects.PublishSubject
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -29,6 +30,8 @@ class ChannelsUseCaseTests {
     @Before fun setUp() {
         mockConnections = mock()
         mockClients = mock()
+
+        whenever(mockClients.dropped).thenReturn(PublishSubject.create())
 
         sut = ChannelsUseCase(mockConnections, mockClients)
     }
@@ -50,7 +53,7 @@ class ChannelsUseCaseTests {
 
         joins.onNext(JoinMessage.Command(channels = listOf("#somewhere!")))
 
-        val message = Rpl403Message.Message(source = "bunnies", target = "someone", channel = "#somewhere!", content = "No such channel")
+        val message = Rpl403Message.Message(source = "bunnies.", target = "someone", channel = "#somewhere!", content = "No such channel")
         verify(mockConnections).send(id = 1, message = message)
     }
 
@@ -62,7 +65,7 @@ class ChannelsUseCaseTests {
         joins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
 
         val names = listOf("someone")
-        val message = Rpl353Message.Message(source = "bunnies", target = "someone", visibility = CharacterCodes.EQUALS.toString(), channel = "#somewhere", names = names)
+        val message = Rpl353Message.Message(source = "bunnies.", target = "someone", visibility = CharacterCodes.EQUALS.toString(), channel = "#somewhere", names = names)
         verify(mockConnections).send(id = 1, message = message)
     }
 
@@ -79,7 +82,7 @@ class ChannelsUseCaseTests {
         clientTwoJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
 
         val names = listOf("someone", "someone_else")
-        val message = Rpl353Message.Message(source = "bunnies", target = "someone_else", visibility = CharacterCodes.EQUALS.toString(), channel = "#somewhere", names = names)
+        val message = Rpl353Message.Message(source = "bunnies.", target = "someone_else", visibility = CharacterCodes.EQUALS.toString(), channel = "#somewhere", names = names)
         verify(mockConnections).send(id = 2, message = message)
     }
 

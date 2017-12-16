@@ -41,7 +41,7 @@ class ChannelMessagesUseCaseTests {
 
         privMsgs.onNext(PrivMsgMessage.Command(target = "not_valid", message = "something"))
 
-        verify(mockConnections, only()).send(id = 1, message = Rpl404Message.Message(source = "bunnies", target = "someone", channel = "not_valid", content = "Invalid channel name"))
+        verify(mockConnections, only()).send(id = 1, message = Rpl404Message.Message(source = "bunnies.", target = "someone", channel = "not_valid", content = "Invalid channel name"))
     }
 
     @Test fun `when a client sends a message to a nonexistent channel, send an error back`() {
@@ -52,7 +52,7 @@ class ChannelMessagesUseCaseTests {
 
         privMsgs.onNext(PrivMsgMessage.Command(target = "#somewhere", message = "something"))
 
-        verify(mockConnections, only()).send(id = 1, message = Rpl404Message.Message(source = "bunnies", target = "someone", channel = "#somewhere", content = "Channel doesn't exist"))
+        verify(mockConnections, only()).send(id = 1, message = Rpl404Message.Message(source = "bunnies.", target = "someone", channel = "#somewhere", content = "Channel doesn't exist"))
     }
 
     @Test fun `when a client sends a message to a channel they aren't in, send an error back`() {
@@ -64,7 +64,7 @@ class ChannelMessagesUseCaseTests {
 
         privMsgs.onNext(PrivMsgMessage.Command(target = "#somewhere", message = "something"))
 
-        verify(mockConnections, only()).send(id = 1, message = Rpl404Message.Message(source = "bunnies", target = "someone", channel = "#somewhere", content = "You're not in that channel"))
+        verify(mockConnections, only()).send(id = 1, message = Rpl404Message.Message(source = "bunnies.", target = "someone", channel = "#somewhere", content = "You're not in that channel"))
     }
 
     @Test fun `when a client sends an invalid message to a channel, send an error back`() {
@@ -76,7 +76,7 @@ class ChannelMessagesUseCaseTests {
 
         privMsgs.onNext(PrivMsgMessage.Command(target = "#somewhere", message = ""))
 
-        verify(mockConnections, only()).send(id = 1, message = Rpl404Message.Message(source = "bunnies", target = "someone", channel = "#somewhere", content = "That message was invalid"))
+        verify(mockConnections, only()).send(id = 1, message = Rpl404Message.Message(source = "bunnies.", target = "someone", channel = "#somewhere", content = "That message was invalid"))
     }
 
     @Test fun `when a client sends an valid message to a valid channel, send the message to other clients in the channel`() {

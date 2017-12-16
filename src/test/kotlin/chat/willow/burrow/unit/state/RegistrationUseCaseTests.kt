@@ -87,11 +87,11 @@ class RegistrationUseCaseTests {
         observer.assertValue(RegistrationUseCase.Registered(Prefix(nick = "nickname", user = "username", host = "host"), caps = setOf()))
     }
 
-    @Test fun `USER, but no NICK, results in a timeout after 5 seconds`() {
+    @Test fun `USER, but no NICK, results in a timeout after 20 seconds`() {
         val observer = sut.track(mockKale, mapOf(), connection).test()
 
         mockUser.onNext(UserMessage.Command("username", "*", "realname"))
-        scheduler.advanceTimeTo(5, TimeUnit.SECONDS)
+        scheduler.advanceTimeTo(20, TimeUnit.SECONDS)
 
         observer.assertError(TimeoutException::class.java)
     }
@@ -102,7 +102,7 @@ class RegistrationUseCaseTests {
         mockCapLs.onNext(CapMessage.Ls.Command(version = "302"))
         mockUser.onNext(UserMessage.Command("username", "*", "realname"))
         mockNick.onNext(NickMessage.Command("nickname"))
-        scheduler.advanceTimeTo(5, TimeUnit.SECONDS)
+        scheduler.advanceTimeTo(20, TimeUnit.SECONDS)
 
         observer.assertError(TimeoutException::class.java)
     }
@@ -162,7 +162,7 @@ class RegistrationUseCaseTests {
         mockNick.onNext(NickMessage.Command("alreadyTakenNick"))
 
         observer.assertEmpty()
-        verify(mockConnections).send(id = connection.id, message = Rpl433Message.Message(source = "bunnies", target = "alreadyTakenNick", content = "Nickname is already in use"))
+        verify(mockConnections).send(id = connection.id, message = Rpl433Message.Message(source = "bunnies.", target = "alreadyTakenNick", content = "Nickname is already in use"))
     }
 
 }

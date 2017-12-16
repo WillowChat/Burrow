@@ -48,7 +48,7 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
 
     private val MAX_USER_LENGTH = 9
     private val MAX_NICK_LENGTH = 30 // todo: isupport
-    private val TIMEOUT_SECONDS: Long = 5
+    private val TIMEOUT_SECONDS: Long = 20
 
     override fun track(kale: IKale, caps: Map<String, String?>, connection: BurrowConnection): Observable<Registered> {
         val users = kale.observe(UserMessage.Command.Descriptor).share()
@@ -80,7 +80,7 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
         val capReq = kale.observe(CapMessage.Req.Command.Descriptor).share()
 
         capLs
-                .map { CapMessage.Ls.Message(target = "*", caps = caps, isMultiline = false) }
+                .map { CapMessage.Ls.Message(source = Prefix("bunnies."), target = "*", caps = caps, isMultiline = false) }
                 .subscribe { connections.send(connection.id, it) }
 
         val requestedSupportedCaps = capReq.flatMap {
@@ -104,10 +104,10 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
         }
 
         requestedSupportedCaps
-                .subscribe { connections.send(connection.id, CapMessage.Ack.Message(target = "*", caps = it.toList())) }
+                .subscribe { connections.send(connection.id, CapMessage.Ack.Message(source = Prefix("bunnies."), target = "*", caps = it.toList())) }
 
         requestedUnsupportedCaps
-                .subscribe { connections.send(connection.id, CapMessage.Nak.Message(target = "*", caps = it.toList())) }
+                .subscribe { connections.send(connection.id, CapMessage.Nak.Message(source = Prefix("bunnies."), target = "*", caps = it.toList())) }
 
         val negotiatedCaps = requestedSupportedCaps
                 .scan(setOf<String>(), { initial, addition -> initial + addition })
@@ -153,7 +153,7 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
 
     private fun sendAlreadyExists(nickAndConnection: Pair<String, BurrowConnection>) {
         val (nick, connection) = nickAndConnection
-        val message = Rpl433Message.Message(source = "bunnies", target = nick, content = "Nickname is already in use")
+        val message = Rpl433Message.Message(source = "bunnies.", target = nick, content = "Nickname is already in use")
         connections.send(connection.id, message)
     }
 

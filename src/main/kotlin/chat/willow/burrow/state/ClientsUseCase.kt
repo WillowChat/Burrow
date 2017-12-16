@@ -6,6 +6,7 @@ import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.helper.CaseInsensitiveNamedMap
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001Message
+import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.subjects.PublishSubject
 
@@ -15,6 +16,7 @@ interface IClientsUseCase {
 
     val track: Observer<ClientTracker.ConnectedClient>
     val drop: Observer<ConnectionId>
+    val dropped: Observable<ClientTracker.ConnectedClient>
 
 }
 
@@ -30,6 +32,7 @@ class ClientsUseCase(val connections: IConnectionTracker): IClientsUseCase {
 
     override val track = PublishSubject.create<ClientTracker.ConnectedClient>()
     override val drop = PublishSubject.create<ConnectionId>()
+    override val dropped = PublishSubject.create<ClientTracker.ConnectedClient>()
 
     init {
         track.subscribe(this::track)
@@ -37,7 +40,7 @@ class ClientsUseCase(val connections: IConnectionTracker): IClientsUseCase {
     }
 
     private fun track(client: ClientTracker.ConnectedClient) {
-        connections.send(client.connection.id, Rpl001Message.Message(source = "bunnies", target = client.prefix.nick, content = "welcome to burrow"))
+        connections.send(client.connection.id, Rpl001Message.Message(source = "bunnies.", target = client.prefix.nick, content = "welcome to burrow"))
 
         ping.track(client)
         channels.track(client)
@@ -56,6 +59,7 @@ class ClientsUseCase(val connections: IConnectionTracker): IClientsUseCase {
         val client = clients.all.values.firstOrNull { connectionId == it.connection.id }
         if (client != null) {
             clients -= client.name
+            dropped.onNext(client)
         }
     }
 }
