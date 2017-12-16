@@ -63,7 +63,7 @@ pipeline {
             steps {
                 sh "find build/libs -name Burrow\\*${env.BUILD_NUMBER}.jar | head -n 1 | xargs -I '{}' mvn install:install-file -Dfile={} -DpomFile=build/publications/mavenJava/pom-default.xml -DlocalRepositoryPath=/var/www/maven.hopper.bunnies.io"
                 sh "find build/libs -name Burrow\\*sources.jar | head -n 1 | xargs -I '{}' mvn install:install-file -Dfile={} -Dclassifier=sources -DpomFile=build/publications/mavenJava/pom-default.xml -DlocalRepositoryPath=/var/www/maven.hopper.bunnies.io"
-                sh "find build/libs -name Burrow\\*all.jar | head -n 1 | xargs -I '{}' docker build --build-arg jar={} ."
+                sh "find build/libs -name Burrow\\*all.jar | head -n 1 | xargs -I '{}' docker build -t carrot/burrow-testnet:latest --build-arg jar={} ."
             }
         }
     }
