@@ -66,6 +66,7 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
                 .subscribe { handlePart(it, client) }
 
         clients.dropped
+                // todo: test, and only send PARTs to the other users
                 .map { it to channelsForUser(it.name) }
                 .subscribe { (client, channels) ->
                     channels.forEach {
