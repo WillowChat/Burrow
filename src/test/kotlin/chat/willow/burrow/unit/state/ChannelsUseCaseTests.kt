@@ -3,6 +3,7 @@ package chat.willow.burrow.unit.state
 import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.state.ChannelsUseCase
+import chat.willow.burrow.state.ClientTracker
 import chat.willow.burrow.state.IClientsUseCase
 import chat.willow.burrow.state.Rpl403Message
 import chat.willow.kale.irc.CharacterCodes
@@ -11,10 +12,7 @@ import chat.willow.kale.irc.message.rfc1459.PartMessage
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl353Message
 import chat.willow.kale.irc.prefix.Prefix
 import chat.willow.kale.irc.prefix.prefix
-import com.nhaarman.mockito_kotlin.inOrder
-import com.nhaarman.mockito_kotlin.mock
-import com.nhaarman.mockito_kotlin.verify
-import com.nhaarman.mockito_kotlin.whenever
+import com.nhaarman.mockito_kotlin.*
 import io.reactivex.subjects.PublishSubject
 import org.junit.Assert.*
 import org.junit.Before
@@ -27,11 +25,15 @@ class ChannelsUseCaseTests {
     private lateinit var mockConnections: IConnectionTracker
     private lateinit var mockClients: IClientsUseCase
 
+    private lateinit var droppeds: PublishSubject<ClientTracker.ConnectedClient>
+
     @Before fun setUp() {
         mockConnections = mock()
         mockClients = mock()
 
-        whenever(mockClients.dropped).thenReturn(PublishSubject.create())
+        droppeds = PublishSubject.create()
+
+        whenever(mockClients.dropped).thenReturn(droppeds)
 
         sut = ChannelsUseCase(mockConnections, mockClients)
     }
@@ -258,6 +260,17 @@ class ChannelsUseCaseTests {
         clientTwoJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
 
         assertEquals(setOf("someone"), sut.channels["#somewhere"]?.users?.all?.keys)
+    }
+
+    @Test fun `when there's one person in a channel, and they get dropped, don't send anything`() {
+        val testClientOne = makeClient(id = 1, prefix = Prefix(nick = "someone"))
+        val clientOneJoins = testClientOne.mock(JoinMessage.Command.Descriptor)
+        sut.track(testClientOne.client)
+        clientOneJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
+
+        droppeds.onNext(testClientOne.client)
+
+        verify(mockConnections, never()).send(any(), any<PartMessage.Message>())
     }
 
 }

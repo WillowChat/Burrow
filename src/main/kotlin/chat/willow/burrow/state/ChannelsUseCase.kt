@@ -3,7 +3,6 @@ package chat.willow.burrow.state
 import chat.willow.burrow.Burrow
 import chat.willow.burrow.Burrow.Validation.channel
 import chat.willow.burrow.connection.IConnectionTracker
-import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.ICommand
 import chat.willow.kale.KaleObservable
@@ -15,9 +14,6 @@ import chat.willow.kale.irc.message.rfc1459.PartMessage
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl353Message
 import chat.willow.kale.irc.message.rfc1459.rpl.RplSourceTargetChannelContent
 import chat.willow.kale.irc.prefix.Prefix
-import io.reactivex.Observable
-import io.reactivex.Observer
-import io.reactivex.subjects.PublishSubject
 
 interface IChannelsUseCase {
 
@@ -66,13 +62,7 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
                 .subscribe { handlePart(it, client) }
 
         clients.dropped
-                // todo: test, and only send PARTs to the other users
-                .map { it to channelsForUser(it.name) }
-                .subscribe { (client, channels) ->
-                    channels.forEach {
-                        handleValidPart(it.name, client)
-                    }
-                }
+                .subscribe(this::handleClientDropped)
     }
 
     private fun handleJoin(observable: KaleObservable<JoinMessage.Command>, client: ClientTracker.ConnectedClient) {
@@ -147,11 +137,24 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
         val message = PartMessage.Message(source = client.prefix, channels = listOf(channelName))
         connections.send(client.connection.id, message)
 
-        // todo: batch sending up?
+        sendPartsToOtherChannelUsers(clientsParted = setOf(client.prefix), channel = channel)
+    }
+
+    private fun handleClientDropped(client: ClientTracker.ConnectedClient) {
+        val channelsForUser = channelsForUser(client.name)
+
+        channelsForUser.forEach { channel ->
+            sendPartsToOtherChannelUsers(clientsParted = setOf(client.prefix), channel = channel)
+        }
+    }
+
+    private fun sendPartsToOtherChannelUsers(clientsParted: Set<Prefix>, channel: Channel) {
         val users = channel.users.all.values.map { it.prefix.nick }
-        val otherUsers = (users.toSet() - client.name).mapNotNull { clients.lookUpClient(it) }
-        otherUsers.forEach {
-            connections.send(it.connection.id, PartMessage.Message(source = client.prefix, channels = listOf(channel.name)))
+        val otherUsers = (users.toSet() - clientsParted.map { it.nick }).mapNotNull { clients.lookUpClient(it) }
+        otherUsers.forEach { user ->
+            clientsParted.forEach { partedClient ->
+                connections.send(user.connection.id, PartMessage.Message(source = partedClient, channels = listOf(channel.name)))
+            }
         }
     }
 
