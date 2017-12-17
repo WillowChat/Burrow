@@ -24,15 +24,15 @@ class ClientsUseCase(val connections: IConnectionTracker): IClientsUseCase {
 
     private val LOGGER = loggerFor<ClientsUseCase>()
 
+    override val track = PublishSubject.create<ClientTracker.ConnectedClient>()
+    override val drop = PublishSubject.create<ConnectionId>()
+    override val dropped = PublishSubject.create<ClientTracker.ConnectedClient>()
+
     private val channels = ChannelsUseCase(connections, this)
     private val ping = PingUseCase(connections)
     private val channelMessages = ChannelMessagesUseCase(connections, channels, this)
 
     private val clients = CaseInsensitiveNamedMap<ClientTracker.ConnectedClient>(mapper = Burrow.Server.MAPPER)
-
-    override val track = PublishSubject.create<ClientTracker.ConnectedClient>()
-    override val drop = PublishSubject.create<ConnectionId>()
-    override val dropped = PublishSubject.create<ClientTracker.ConnectedClient>()
 
     init {
         track.subscribe(this::track)
