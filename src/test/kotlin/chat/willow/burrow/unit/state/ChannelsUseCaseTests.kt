@@ -32,7 +32,6 @@ class ChannelsUseCaseTests {
         mockClients = mock()
 
         droppeds = PublishSubject.create()
-
         whenever(mockClients.dropped).thenReturn(droppeds)
 
         sut = ChannelsUseCase(mockConnections, mockClients)
@@ -271,6 +270,31 @@ class ChannelsUseCaseTests {
         droppeds.onNext(testClientOne.client)
 
         verify(mockConnections, never()).send(any(), any<PartMessage.Message>())
+    }
+
+    @Test fun `when there's multiple users in a channel, and one of them drops, send PARTs to all the other users`() {
+        val testClientOne = makeClient(id = 1, prefix = Prefix(nick = "someone"))
+        val testClientTwo = makeClient(id = 2, prefix = Prefix(nick = "someone_else_1"))
+        val testClientThree = makeClient(id = 3, prefix = Prefix(nick = "someone_else_2"))
+        val clientOneJoins = testClientOne.mock(JoinMessage.Command.Descriptor)
+        val clientTwoJoins = testClientTwo.mock(JoinMessage.Command.Descriptor)
+        val clientThreeJoins = testClientThree.mock(JoinMessage.Command.Descriptor)
+        whenever(mockClients.lookUpClient("someone")).thenReturn(testClientOne.client)
+        whenever(mockClients.lookUpClient("someone_else_1")).thenReturn(testClientTwo.client)
+        whenever(mockClients.lookUpClient("someone_else_2")).thenReturn(testClientThree.client)
+        sut.track(testClientOne.client)
+        sut.track(testClientTwo.client)
+        sut.track(testClientThree.client)
+        clientOneJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
+        clientTwoJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
+        clientThreeJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
+
+        droppeds.onNext(testClientOne.client)
+
+        inOrder(mockConnections) {
+            verify(mockConnections).send(id = 2, message = PartMessage.Message(source = prefix("someone"), channels = listOf("#somewhere")))
+            verify(mockConnections).send(id = 3, message = PartMessage.Message(source = prefix("someone"), channels = listOf("#somewhere")))
+        }
     }
 
 }

@@ -52,6 +52,11 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
 
     override val channels = CaseInsensitiveNamedMap<Channel>(mapper = Burrow.Server.MAPPER)
 
+    init {
+        clients.dropped
+                .subscribe(this::handleClientDropped)
+    }
+
     override fun track(client: ClientTracker.ConnectedClient) {
         client.kale
                 .observe(JoinMessage.Command.Descriptor)
@@ -60,9 +65,6 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
         client.kale
                 .observe(PartMessage.Command.Descriptor)
                 .subscribe { handlePart(it, client) }
-
-        clients.dropped
-                .subscribe(this::handleClientDropped)
     }
 
     private fun handleJoin(observable: KaleObservable<JoinMessage.Command>, client: ClientTracker.ConnectedClient) {
@@ -137,24 +139,23 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
         val message = PartMessage.Message(source = client.prefix, channels = listOf(channelName))
         connections.send(client.connection.id, message)
 
-        sendPartsToOtherChannelUsers(clientsParted = setOf(client.prefix), channel = channel)
+        sendPartsToOtherChannelUsers(client.prefix, channel = channel)
     }
 
     private fun handleClientDropped(client: ClientTracker.ConnectedClient) {
         val channelsForUser = channelsForUser(client.name)
 
         channelsForUser.forEach { channel ->
-            sendPartsToOtherChannelUsers(clientsParted = setOf(client.prefix), channel = channel)
+            sendPartsToOtherChannelUsers(client.prefix, channel = channel)
         }
     }
 
-    private fun sendPartsToOtherChannelUsers(clientsParted: Set<Prefix>, channel: Channel) {
+    private fun sendPartsToOtherChannelUsers(client: Prefix, channel: Channel) {
         val users = channel.users.all.values.map { it.prefix.nick }
-        val otherUsers = (users.toSet() - clientsParted.map { it.nick }).mapNotNull { clients.lookUpClient(it) }
+        val otherUsers = (users.toSet() - client.nick).mapNotNull { clients.lookUpClient(it) }
         otherUsers.forEach { user ->
-            clientsParted.forEach { partedClient ->
-                connections.send(user.connection.id, PartMessage.Message(source = partedClient, channels = listOf(channel.name)))
-            }
+            val message = PartMessage.Message(source = client, channels = listOf(channel.name))
+            connections.send(user.connection.id, message)
         }
     }
 
