@@ -1,4 +1,4 @@
-FROM openjdk:8u151-jre
+FROM openjdk:9.0.1-jre
 ARG jar
 WORKDIR /
 ADD $jar Burrow.jar
