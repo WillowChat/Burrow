@@ -26,7 +26,7 @@ object Rpl404Message : ICommand {
 
 }
 
-class ChannelMessagesUseCase(private val connections: IConnectionTracker, private val channels: IChannelsUseCase, private val clients: IClientsUseCase): IChannelMessagesUseCase {
+class ChannelMessagesUseCase(private val channels: IChannelsUseCase, private val clients: IClientsUseCase): IChannelMessagesUseCase {
 
     override fun track(client: ClientTracker.ConnectedClient) {
         client.kale
@@ -51,7 +51,7 @@ class ChannelMessagesUseCase(private val connections: IConnectionTracker, privat
 
     private fun sendCannotSendToChan(client: ClientTracker.ConnectedClient, channelName: String, message: String) {
         val messageToSend = Rpl404Message.Message(source = "bunnies.", target = client.name, channel = channelName, content = message)
-        connections.send(client.connection.id, messageToSend)
+        clients.send.onNext(client to messageToSend)
     }
 
     private fun sendInvalidChannelName(client: ClientTracker.ConnectedClient, channelName: String) {
@@ -83,7 +83,7 @@ class ChannelMessagesUseCase(private val connections: IConnectionTracker, privat
 
         otherUsers.forEach { user ->
             val messageToSend = PrivMsgMessage.Message(source = client.prefix, target = channelName, message = message)
-            connections.send(user.connection.id, messageToSend)
+            clients.send.onNext(user to messageToSend)
         }
 
     }

@@ -81,7 +81,7 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
 
         capLs
                 .map { CapMessage.Ls.Message(source = Prefix("bunnies."), target = "*", caps = caps, isMultiline = false) }
-                .subscribe { connections.send(connection.id, it) }
+                .subscribe { connections.send.onNext(connection.id to it) }
 
         val requestedSupportedCaps = capReq.flatMap {
             val requestedCaps = it.message.caps.toSet()
@@ -104,10 +104,10 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
         }
 
         requestedSupportedCaps
-                .subscribe { connections.send(connection.id, CapMessage.Ack.Message(source = Prefix("bunnies."), target = "*", caps = it.toList())) }
+                .subscribe { connections.send.onNext(connection.id to CapMessage.Ack.Message(source = Prefix("bunnies."), target = "*", caps = it.toList())) }
 
         requestedUnsupportedCaps
-                .subscribe { connections.send(connection.id, CapMessage.Nak.Message(source = Prefix("bunnies."), target = "*", caps = it.toList())) }
+                .subscribe { connections.send.onNext(connection.id to CapMessage.Nak.Message(source = Prefix("bunnies."), target = "*", caps = it.toList())) }
 
         val negotiatedCaps = requestedSupportedCaps
                 .scan(setOf<String>(), { initial, addition -> initial + addition })
@@ -154,7 +154,7 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
     private fun sendAlreadyExists(nickAndConnection: Pair<String, BurrowConnection>) {
         val (nick, connection) = nickAndConnection
         val message = Rpl433Message.Message(source = "bunnies.", target = nick, content = "Nickname is already in use")
-        connections.send(connection.id, message)
+        connections.send.onNext(connection.id to message)
     }
 
 }

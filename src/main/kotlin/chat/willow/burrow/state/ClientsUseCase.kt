@@ -17,37 +17,42 @@ interface IClientsUseCase {
     val track: Observer<ClientTracker.ConnectedClient>
     val drop: Observer<ConnectionId>
     val dropped: Observable<ClientTracker.ConnectedClient>
+    val send: Observer<Pair<ClientTracker.ConnectedClient, Any>>
 
 }
 
-class ClientsUseCase(val connections: IConnectionTracker): IClientsUseCase {
+class ClientsUseCase(connections: IConnectionTracker): IClientsUseCase {
 
     private val LOGGER = loggerFor<ClientsUseCase>()
 
     override val track = PublishSubject.create<ClientTracker.ConnectedClient>()
     override val drop = PublishSubject.create<ConnectionId>()
     override val dropped = PublishSubject.create<ClientTracker.ConnectedClient>()
+    override val send = PublishSubject.create<Pair<ClientTracker.ConnectedClient, Any>>()
 
-    private val channels = ChannelsUseCase(connections, this)
+    private val channels = ChannelsUseCase(this)
     private val ping = PingUseCase(connections, this)
-    private val channelMessages = ChannelMessagesUseCase(connections, channels, this)
+    private val channelMessages = ChannelMessagesUseCase(channels, this)
 
     private val clients = CaseInsensitiveNamedMap<ClientTracker.ConnectedClient>(mapper = Burrow.Server.MAPPER)
 
     init {
         track.subscribe(this::track)
         drop.subscribe(this::drop)
+        send
+                .map { it.first.connectionId to it.second }
+                .subscribe(connections.send)
     }
 
     private fun track(client: ClientTracker.ConnectedClient) {
-        connections.send(client.connection.id, Rpl001Message.Message(source = "bunnies.", target = client.prefix.nick, content = "welcome to burrow"))
+        send.onNext(client to Rpl001Message.Message(source = "bunnies.", target = client.prefix.nick, content = "welcome to burrow"))
 
         ping.track(client)
         channels.track(client)
         channelMessages.track(client)
 
         clients += client
-        LOGGER.info("tracked client ${client.connection.id}")
+        LOGGER.info("tracked client ${client.connectionId}")
     }
 
     override fun lookUpClient(nick: String): ClientTracker.ConnectedClient? {
@@ -56,7 +61,7 @@ class ClientsUseCase(val connections: IConnectionTracker): IClientsUseCase {
 
     private fun drop(connectionId: ConnectionId) {
         // todo: optimise
-        val client = clients.all.values.firstOrNull { connectionId == it.connection.id }
+        val client = clients.all.values.firstOrNull { connectionId == it.connectionId }
         if (client != null) {
             clients -= client.name
             dropped.onNext(client)

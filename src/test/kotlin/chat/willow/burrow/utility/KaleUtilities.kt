@@ -26,7 +26,7 @@ data class TestClient(val kale: IKale, val client: ClientTracker.ConnectedClient
         get() = client.prefix
 
     val id: ConnectionId
-        get() = client.connection.id
+        get() = client.connectionId
 
 }
 

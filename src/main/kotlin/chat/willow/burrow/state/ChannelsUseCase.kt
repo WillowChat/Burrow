@@ -56,7 +56,7 @@ object Rpl366Message : ICommand {
 
 }
 
-class ChannelsUseCase(private val connections: IConnectionTracker, val clients: IClientsUseCase): IChannelsUseCase {
+class ChannelsUseCase(val clients: IClientsUseCase): IChannelsUseCase {
 
     private val LOGGER = loggerFor<ChannelsUseCase>()
     private val MAX_CHANNEL_LENGTH = 18 // todo: check
@@ -90,7 +90,7 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
 
     private fun sendNoSuchChannel(channelName: String, client: ClientTracker.ConnectedClient) {
         val noSuchChannelMessage = Rpl403Message.Message(source = "bunnies.", target = client.name, channel = channelName, content = "No such channel")
-        connections.send(client.connection.id, noSuchChannelMessage)
+        clients.send.onNext(client to noSuchChannelMessage)
     }
 
     private fun handleValidJoin(channelName: String, client: ClientTracker.ConnectedClient) {
@@ -98,7 +98,7 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
         channel.users += ChannelUser(client.prefix)
 
         val joinMessage = JoinMessage.Message(source = client.prefix, channels = listOf(channel.name))
-        connections.send(client.connection.id, joinMessage)
+        clients.send.onNext(client to joinMessage)
 
         // todo: split message when there's too many users
         // todo: permissions for users - @ etc as a prefix
@@ -106,13 +106,13 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
         val namReplyMessage = Rpl353Message.Message(source = "bunnies.", target = client.name, visibility = CharacterCodes.EQUALS.toString(), channel = channel.name, names = users)
         val endOfNamesMessage = Rpl366Message.Message(source = "bunnies.", target = client.name, channel = channelName, content = "End of /NAMES list")
 
-        connections.send(client.connection.id, namReplyMessage)
-        connections.send(client.connection.id, endOfNamesMessage)
+        clients.send.onNext(client to namReplyMessage)
+        clients.send.onNext(client to endOfNamesMessage)
 
         // todo: batch sending up?
         val otherUsers = (users.toSet() - client.name).mapNotNull { clients.lookUpClient(it) }
         otherUsers.forEach {
-            connections.send(it.connection.id, JoinMessage.Message(source = client.prefix, channels = listOf(channel.name)))
+            clients.send.onNext(it to JoinMessage.Message(source = client.prefix, channels = listOf(channel.name)))
         }
     }
 
@@ -151,7 +151,7 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
         }
 
         val message = PartMessage.Message(source = client.prefix, channels = listOf(channelName))
-        connections.send(client.connection.id, message)
+        clients.send.onNext(client to message)
 
         sendPartsToOtherChannelUsers(client.prefix, channel = channel)
     }
@@ -169,7 +169,7 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
         val otherUsers = (users.toSet() - client.nick).mapNotNull { clients.lookUpClient(it) }
         otherUsers.forEach { user ->
             val message = PartMessage.Message(source = client, channels = listOf(channel.name))
-            connections.send(user.connection.id, message)
+            clients.send.onNext(user to message)
         }
     }
 

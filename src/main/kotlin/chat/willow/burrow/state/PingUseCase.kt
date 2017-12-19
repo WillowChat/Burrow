@@ -48,7 +48,7 @@ class PingUseCase(private val connections: IConnectionTracker, private val clien
     private fun pingClient(client: ClientTracker.ConnectedClient, token: String): Observable<String> {
         // todo: thread safety
 
-        connections.send(client.connection.id, PingMessage.Command(token))
+        connections.send.onNext(client.connectionId to PingMessage.Command(token))
 
         return client.kale
                 .observe(PongMessage.Message.Descriptor)
@@ -60,7 +60,7 @@ class PingUseCase(private val connections: IConnectionTracker, private val clien
 
     private fun handlePing(observable: KaleObservable<PingMessage.Command>, client: ClientTracker.ConnectedClient) {
         val message = PongMessage.Message(token = observable.message.token)
-        connections.send(client.connection.id, message)
+        connections.send.onNext(client.connectionId to message)
     }
 
 }

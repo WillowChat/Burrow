@@ -1,15 +1,16 @@
 package chat.willow.burrow.unit.state
 
-import chat.willow.burrow.connection.IConnectionTracker
+import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.state.ClientTracker
-import chat.willow.burrow.state.IClientsUseCase
 import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.state.PingUseCase
+import chat.willow.burrow.unit.connection.network.MockConnectionTracker
 import chat.willow.burrow.utility.KaleUtilities.mockKale
 import chat.willow.kale.irc.message.rfc1459.PingMessage
 import chat.willow.kale.irc.message.rfc1459.PongMessage
 import chat.willow.kale.irc.prefix.prefix
 import com.nhaarman.mockito_kotlin.*
+import io.reactivex.observers.TestObserver
 import io.reactivex.schedulers.TestScheduler
 import io.reactivex.subjects.PublishSubject
 import org.junit.Before
@@ -20,17 +21,14 @@ class PingUseCaseTests {
 
     private lateinit var sut: PingUseCase
 
-    private lateinit var mockConnections: IConnectionTracker
-    private lateinit var mockClients: IClientsUseCase
+    private lateinit var mockConnections: MockConnectionTracker
+    private lateinit var mockClients: MockClientsUseCase
 
     private lateinit var scheduler: TestScheduler
 
-    private val drops = PublishSubject.create<ClientTracker.ConnectedClient>()
-
     @Before fun setUp() {
-        mockConnections = mock()
-        mockClients = mock()
-        whenever(mockClients.dropped).thenReturn(drops)
+        mockConnections = MockConnectionTracker()
+        mockClients = MockClientsUseCase()
 
         scheduler = TestScheduler()
 
@@ -40,20 +38,22 @@ class PingUseCaseTests {
     @Test fun `when a client is tracked, we start responding to client pings`() {
         val testClient = makeClient(prefix = prefix("someone"))
         val pings = testClient.mock(PingMessage.Command.Descriptor)
+        val sends = mockConnections.sendSubject.test()
 
         sut.track(testClient.client)
         pings.onNext(PingMessage.Command(token = "something"))
 
-        verify(mockConnections).send(id = 1, message = PongMessage.Message(token = "something"))
+        sends.assertValue(1 to PongMessage.Message(token = "something"))
     }
 
     @Test fun `after 30 seconds, we send a ping command to the client`() {
         val testClient = makeClient()
+        val sends = mockConnections.sendSubject.test()
 
         sut.track(testClient.client)
         scheduler.advanceTimeBy(30, TimeUnit.SECONDS)
 
-        verify(mockConnections).send(id = 1, message = PingMessage.Command(token = "bunnies"))
+        sends.assertValue(1 to PingMessage.Command(token = "bunnies"))
     }
 
     @Test fun `after sending a ping, wait 30 seconds for a reply, and fire a timeout`() {
@@ -71,9 +71,10 @@ class PingUseCaseTests {
         val testClient = makeClient()
         val pongs = testClient.mock(PongMessage.Message.Descriptor)
         val timeouts = sut.timeout.test()
+        val sends = mockConnections.sendSubject.test()
         sut.track(testClient.client)
         scheduler.advanceTimeBy(30, TimeUnit.SECONDS)
-        verify(mockConnections).send(id = 1, message = PingMessage.Command(token = "bunnies"))
+        sends.assertValue(1 to PingMessage.Command(token = "bunnies"))
 
         pongs.onNext(PongMessage.Message(token = "bunnies"))
         scheduler.advanceTimeBy(30, TimeUnit.SECONDS)
@@ -85,9 +86,10 @@ class PingUseCaseTests {
         val testClient = makeClient()
         val pongs = testClient.mock(PongMessage.Message.Descriptor)
         val timeouts = sut.timeout.test()
+        val sends = mockConnections.sendSubject.test()
         sut.track(testClient.client)
         scheduler.advanceTimeBy(30, TimeUnit.SECONDS)
-        verify(mockConnections).send(id = 1, message = PingMessage.Command(token = "bunnies"))
+        sends.assertValue(1 to PingMessage.Command(token = "bunnies"))
 
         pongs.onNext(PongMessage.Message(token = "not_bunnies"))
         scheduler.advanceTimeBy(30, TimeUnit.SECONDS)
@@ -100,44 +102,47 @@ class PingUseCaseTests {
         val testClient = makeClient(kale)
         val pongs = testClient.mock(PongMessage.Message.Descriptor)
         val timeouts = sut.timeout.test()
+        val sends = mockConnections.sendSubject.test()
         sut.track(testClient.client)
-        scheduler.advanceTimeBy(30, TimeUnit.SECONDS)
 
-        verify(mockConnections).send(id = 1, message = PingMessage.Command(token = "bunnies"))
-        reset(mockConnections)
+        scheduler.advanceTimeBy(30, TimeUnit.SECONDS)
         pongs.onNext(PongMessage.Message(token = "bunnies"))
-        scheduler.triggerActions()
         timeouts.assertEmpty()
 
         scheduler.advanceTimeBy(30, TimeUnit.SECONDS)
-        verify(mockConnections).send(id = 1, message = PingMessage.Command(token = "bunnies"))
-        reset(mockConnections)
         pongs.onNext(PongMessage.Message(token = "bunnies"))
         timeouts.assertEmpty()
+
+        sends.assertValues(
+                (1 to PingMessage.Command(token = "bunnies")),
+                (1 to PingMessage.Command(token = "bunnies"))
+        )
     }
 
     @Test fun `after a client is dropped, they're not sent any more pings`() {
         val testClient = makeClient()
         val timeouts = sut.timeout.test()
+        val sends = mockConnections.sendSubject.test()
         sut.track(testClient.client)
 
-        drops.onNext(testClient.client)
+        mockClients.droppedSubject.onNext(testClient.client)
         scheduler.advanceTimeBy(30, TimeUnit.SECONDS)
         scheduler.advanceTimeBy(30, TimeUnit.SECONDS)
 
-        verifyZeroInteractions(mockConnections)
+        sends.assertEmpty()
         timeouts.assertEmpty()
     }
 
     @Test fun `after a different client is dropped, pings are still sent to the tracked client`() {
         val testClientOne = makeClient(id = 1)
         val testClientTwo = makeClient(id = 2)
+        val sends = mockConnections.sendSubject.test()
         sut.track(testClientOne.client)
 
-        drops.onNext(testClientTwo.client)
+        mockClients.droppedSubject.onNext(testClientTwo.client)
         scheduler.advanceTimeBy(30, TimeUnit.SECONDS)
 
-        verify(mockConnections).send(id = 1, message = PingMessage.Command(token = "bunnies"))
+        sends.assertValue(1 to PingMessage.Command(token = "bunnies"))
     }
 
 }

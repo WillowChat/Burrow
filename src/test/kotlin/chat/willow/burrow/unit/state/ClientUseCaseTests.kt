@@ -1,12 +1,20 @@
 package chat.willow.burrow.unit.state
 
 import chat.willow.burrow.connection.IConnectionTracker
+import chat.willow.burrow.connection.network.ConnectionId
+import chat.willow.burrow.state.ClientTracker
 import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.state.ClientsUseCase
+import chat.willow.burrow.state.IClientsUseCase
+import chat.willow.burrow.unit.connection.network.MockConnectionTracker
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001Message
 import chat.willow.kale.irc.prefix.prefix
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.verify
+import io.reactivex.Observable
+import io.reactivex.Observer
+import io.reactivex.observers.TestObserver
+import io.reactivex.subjects.PublishSubject
 import org.junit.Before
 import org.junit.Test
 import org.junit.Assert.*
@@ -14,12 +22,16 @@ import org.junit.Assert.*
 class ClientUseCaseTests {
 
     private lateinit var sut: ClientsUseCase
-    private lateinit var mockConnectionTracker: IConnectionTracker
+    private lateinit var mockConnections: MockConnectionTracker
+
+    private lateinit var sends: TestObserver<Pair<ConnectionId, Any>>
 
     @Before fun setUp() {
-        mockConnectionTracker = mock()
+        mockConnections = MockConnectionTracker()
 
-        sut = ClientsUseCase(connections = mockConnectionTracker)
+        sends = mockConnections.sendSubject.test()
+
+        sut = ClientsUseCase(mockConnections)
     }
 
     @Test fun `when a client is tracked, they're sent an MOTD`() {
@@ -27,7 +39,7 @@ class ClientUseCaseTests {
 
         sut.track.onNext(client)
 
-        verify(mockConnectionTracker).send(id = 1, message = Rpl001Message.Message(source = "bunnies.", target = "someone", content = "welcome to burrow"))
+        sends.assertValue(1 to Rpl001Message.Message(source = "bunnies.", target = "someone", content = "welcome to burrow"))
     }
 
     @Test fun `after tracking a client, we can look them up by username`() {
@@ -58,4 +70,31 @@ class ClientUseCaseTests {
         assertNull(result)
     }
 
+}
+
+class MockClientsUseCase : IClientsUseCase {
+
+    var stubLookUpClients: Map<String, ClientTracker.ConnectedClient> = mapOf()
+    override fun lookUpClient(nick: String): ClientTracker.ConnectedClient? {
+        return stubLookUpClients[nick]
+    }
+
+    override val track: Observer<ClientTracker.ConnectedClient>
+    val trackSubject = PublishSubject.create<ClientTracker.ConnectedClient>()
+
+    override val drop: Observer<ConnectionId>
+    val dropSubject = PublishSubject.create<ConnectionId>()
+
+    override val dropped: Observable<ClientTracker.ConnectedClient>
+    val droppedSubject = PublishSubject.create<ClientTracker.ConnectedClient>()
+
+    override val send: Observer<Pair<ClientTracker.ConnectedClient, Any>>
+    val sendSubject = PublishSubject.create<Pair<ClientTracker.ConnectedClient, Any>>()
+
+    init {
+        track = trackSubject
+        drop = dropSubject
+        dropped = droppedSubject
+        send = sendSubject
+    }
 }

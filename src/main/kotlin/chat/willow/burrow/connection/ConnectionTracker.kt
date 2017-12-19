@@ -8,16 +8,17 @@ import chat.willow.burrow.connection.network.INetworkSocket
 import chat.willow.burrow.connection.network.ISocketProcessor
 import chat.willow.burrow.connection.network.SocketProcessor
 import chat.willow.burrow.helper.loggerFor
+import chat.willow.burrow.state.IConnectionIdHaving
 import chat.willow.kale.IKale
 import chat.willow.kale.irc.message.IrcMessageSerialiser
 import io.reactivex.Observable
 import io.reactivex.Observer
+import io.reactivex.Scheduler
+import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 import java.util.concurrent.ConcurrentHashMap
 
 interface IConnectionTracker {
-
-    fun <M : Any>send(id: ConnectionId, message: M)
 
     operator fun get(id: ConnectionId): BurrowConnection?
 
@@ -25,6 +26,7 @@ interface IConnectionTracker {
     val dropped: Observable<ConnectionTracker.Dropped>
 
     val drop: Observer<ConnectionId>
+    val send: Observer<Pair<ConnectionId, Any>>
 
 }
 
@@ -65,31 +67,30 @@ data class BurrowConnection(val id: ConnectionId, val host: String, val socket: 
 
 }
 
-class ConnectionTracker(socketProcessor: ISocketProcessor, val bufferSize: Int, var kale: IKale? = null, val connectionFactory: IBurrowConnectionFactory): IConnectionTracker {
+class ConnectionTracker(socketProcessor: ISocketProcessor,
+                        private val bufferSize: Int,
+                        var kale: IKale? = null,
+                        private val connectionFactory: IBurrowConnectionFactory,
+                        socketScheduler: Scheduler = Schedulers.single()): IConnectionTracker {
 
     private val LOGGER = loggerFor<ConnectionTracker>()
 
     private val connections: MutableMap<ConnectionId, BurrowConnection> = ConcurrentHashMap()
 
     data class Tracked(val connection: BurrowConnection)
-    override val tracked: Observable<Tracked>
-    private val trackedSubject = PublishSubject.create<Tracked>()
+    override val tracked = PublishSubject.create<Tracked>()
 
     data class Dropped(val id: ConnectionId)
-    override val dropped: Observable<Dropped>
-    private val droppedSubject = PublishSubject.create<Dropped>()
+    override val dropped = PublishSubject.create<Dropped>()
 
-    override val drop: Observer<ConnectionId>
-    private val dropSubject = PublishSubject.create<ConnectionId>()
+    override val drop = PublishSubject.create<ConnectionId>()
+
+    override val send = PublishSubject.create<Pair<ConnectionId, Any>>()
 
     init {
-        tracked = trackedSubject
-        dropped = droppedSubject
-        drop = dropSubject
-
         socketProcessor.accepted
                 .map(this::track)
-                .subscribe(trackedSubject)
+                .subscribe(tracked)
 
         socketProcessor.read
                 .map { Pair(it.id, LineAccumulator.Input(bytes = it.buffer.array(), read = it.bytes)) }
@@ -97,7 +98,6 @@ class ConnectionTracker(socketProcessor: ISocketProcessor, val bufferSize: Int, 
                     connections[it.first]?.accumulator?.input?.onNext(it.second)
                 }
 
-        // todo: propagate to client tracker?
         socketProcessor.closed
                 .subscribe {
                     LOGGER.info("connection ${it.id} closed - dropping")
@@ -109,7 +109,17 @@ class ConnectionTracker(socketProcessor: ISocketProcessor, val bufferSize: Int, 
                 .map { Dropped(id = it.id) }
                 .subscribe(dropped)
 
-        dropSubject.subscribe { connections[it]?.socket?.close() }
+        drop
+                .observeOn(socketScheduler)
+                .subscribe {
+                    connections[it]?.socket?.close()
+                }
+
+        send
+                .observeOn(socketScheduler)
+                .subscribe {
+                    this.send(it.first, it.second)
+                }
     }
 
     private fun track(accepted: SocketProcessor.Accepted): Tracked {
@@ -130,7 +140,7 @@ class ConnectionTracker(socketProcessor: ISocketProcessor, val bufferSize: Int, 
         return connections[id]
     }
 
-    override fun <M : Any> send(id: ConnectionId, message: M) {
+    private fun <M : Any> send(id: ConnectionId, message: M) {
         val ircMessage = kale?.serialise(message)
         if (ircMessage == null) {
             LOGGER.warn("failed to serialise message: $message")

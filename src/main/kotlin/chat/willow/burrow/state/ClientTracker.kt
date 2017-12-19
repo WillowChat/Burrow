@@ -34,6 +34,10 @@ interface IClientTracker {
 
 }
 
+interface IConnectionIdHaving {
+    val connectionId: ConnectionId
+}
+
 class ClientTracker(val connections: IConnectionTracker,
                     val registrationUseCase: IRegistrationUseCase,
                     val clientsUseCase: IClientsUseCase,
@@ -45,9 +49,16 @@ class ClientTracker(val connections: IConnectionTracker,
     data class RegisteringClient(val connection: BurrowConnection)
     private val registeringClients: MutableMap<ConnectionId, RegisteringClient> = ConcurrentHashMap()
 
-    data class ConnectedClient(val connection: BurrowConnection, val kale: IKale, val prefix: Prefix): INamed {
+    data class ConnectedClient(private val connection: BurrowConnection, val kale: IKale, val prefix: Prefix): INamed, IConnectionIdHaving {
         override val name: String
             get() = prefix.nick
+
+        override val connectionId: ConnectionId
+            get() = connection.id
+
+        override fun toString(): String {
+            return "ConnectedClient(id=$connectionId, prefix=$prefix)"
+        }
     }
     private val connectedClients: MutableMap<ConnectionId, ConnectedClient> = ConcurrentHashMap()
 

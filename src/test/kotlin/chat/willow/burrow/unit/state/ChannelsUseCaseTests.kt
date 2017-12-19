@@ -1,7 +1,8 @@
 package chat.willow.burrow.unit.state
 
-import chat.willow.burrow.connection.IConnectionTracker
+import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.state.*
+import chat.willow.burrow.unit.connection.network.MockConnectionTracker
 import chat.willow.burrow.utility.makeClient
 import chat.willow.kale.irc.CharacterCodes
 import chat.willow.kale.irc.message.rfc1459.JoinMessage
@@ -10,6 +11,7 @@ import chat.willow.kale.irc.message.rfc1459.rpl.Rpl353Message
 import chat.willow.kale.irc.prefix.Prefix
 import chat.willow.kale.irc.prefix.prefix
 import com.nhaarman.mockito_kotlin.*
+import io.reactivex.observers.TestObserver
 import io.reactivex.subjects.PublishSubject
 import org.junit.Assert.*
 import org.junit.Before
@@ -19,19 +21,16 @@ class ChannelsUseCaseTests {
 
     private lateinit var sut: ChannelsUseCase
 
-    private lateinit var mockConnections: IConnectionTracker
-    private lateinit var mockClients: IClientsUseCase
+    private lateinit var mockClients: MockClientsUseCase
 
-    private lateinit var droppeds: PublishSubject<ClientTracker.ConnectedClient>
+    private lateinit var sends: TestObserver<Pair<ClientTracker.ConnectedClient, Any>>
 
     @Before fun setUp() {
-        mockConnections = mock()
-        mockClients = mock()
+        mockClients = MockClientsUseCase()
 
-        droppeds = PublishSubject.create()
-        whenever(mockClients.dropped).thenReturn(droppeds)
+        sends = mockClients.sendSubject.test()
 
-        sut = ChannelsUseCase(mockConnections, mockClients)
+        sut = ChannelsUseCase(mockClients)
     }
 
     @Test fun `when a client sends a JOIN message, with a valid channel name, reply with a JOIN`() {
@@ -41,7 +40,7 @@ class ChannelsUseCaseTests {
 
         joins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
 
-        verify(mockConnections).send(id = 1, message = JoinMessage.Message(source = testClient.prefix, channels = listOf("#somewhere")))
+        sends.assertValueAt(0, testClient.client to JoinMessage.Message(source = testClient.prefix, channels = listOf("#somewhere")))
     }
 
     @Test fun `when a client sends a JOIN message, with an invalid channel name, reply with NOSUCHCHANNEL`() {
@@ -52,7 +51,7 @@ class ChannelsUseCaseTests {
         joins.onNext(JoinMessage.Command(channels = listOf("#somewhere!")))
 
         val message = Rpl403Message.Message(source = "bunnies.", target = "someone", channel = "#somewhere!", content = "No such channel")
-        verify(mockConnections).send(id = 1, message = message)
+        sends.assertValue(testClient.client to message)
     }
 
     @Test fun `when a client joins a channel, and the channel was empty, send a NAMREPLY with only them`() {
@@ -64,7 +63,7 @@ class ChannelsUseCaseTests {
 
         val names = listOf("someone")
         val message = Rpl353Message.Message(source = "bunnies.", target = "someone", visibility = CharacterCodes.EQUALS.toString(), channel = "#somewhere", names = names)
-        verify(mockConnections).send(id = 1, message = message)
+        sends.assertValueAt(1, testClient.client to message)
     }
 
     @Test fun `when a client joins a channel, and the channel was empty, send a NAMREPLY with current users and an ENDOFNAMES`() {
@@ -72,7 +71,10 @@ class ChannelsUseCaseTests {
         val clientOneJoins = testClientOne.mock(JoinMessage.Command.Descriptor)
         val testClientTwo = makeClient(id = 2, prefix = Prefix(nick = "someone_else"))
         val clientTwoJoins = testClientTwo.mock(JoinMessage.Command.Descriptor)
-
+        mockClients.stubLookUpClients = mapOf(
+                "someone" to testClientOne.client,
+                "someone_else" to testClientTwo.client
+        )
         sut.track(testClientOne.client)
         sut.track(testClientTwo.client)
 
@@ -83,10 +85,8 @@ class ChannelsUseCaseTests {
         val namReplyMessage = Rpl353Message.Message(source = "bunnies.", target = "someone_else", visibility = CharacterCodes.EQUALS.toString(), channel = "#somewhere", names = names)
         val endOfNamesMessage = Rpl366Message.Message(source = "bunnies.", target = "someone_else", channel = "#somewhere", content = "End of /NAMES list")
 
-        inOrder(mockConnections) {
-            verify(mockConnections).send(id = 2, message = namReplyMessage)
-            verify(mockConnections).send(id = 2, message = endOfNamesMessage)
-        }
+        sends.assertValueAt(4, (testClientTwo.client to namReplyMessage))
+        sends.assertValueAt(5, (testClientTwo.client to endOfNamesMessage))
     }
 
     @Test fun `when a client joins a channel, and the channel wasn't empty, send a JOIN to all the other clients`() {
@@ -94,19 +94,19 @@ class ChannelsUseCaseTests {
         val clientOneJoins = testClientOne.mock(JoinMessage.Command.Descriptor)
         val testClientTwo = makeClient(id = 2, prefix = Prefix(nick = "someone_else"))
         val clientTwoJoins = testClientTwo.mock(JoinMessage.Command.Descriptor)
+        mockClients.stubLookUpClients = mapOf(
+                "someone" to testClientOne.client,
+                "someone_else" to testClientTwo.client
+        )
         sut.track(testClientOne.client)
         sut.track(testClientTwo.client)
-        whenever(mockClients.lookUpClient("someone")).thenReturn(testClientOne.client)
-        whenever(mockClients.lookUpClient("someone_else")).thenReturn(testClientTwo.client)
 
         clientOneJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
         clientTwoJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
 
-        inOrder(mockConnections) {
-            verify(mockConnections).send(id = 1, message = JoinMessage.Message(source = prefix("someone"), channels = listOf("#somewhere")))
-            verify(mockConnections).send(id = 2, message = JoinMessage.Message(source = prefix("someone_else"), channels = listOf("#somewhere")))
-            verify(mockConnections).send(id = 1, message = JoinMessage.Message(source = prefix("someone_else"), channels = listOf("#somewhere")))
-        }
+        sends.assertValueAt(0, (testClientOne.client to JoinMessage.Message(source = prefix("someone"), channels = listOf("#somewhere"))))
+        sends.assertValueAt(3, (testClientTwo.client to JoinMessage.Message(source = prefix("someone_else"), channels = listOf("#somewhere"))))
+        sends.assertValueAt(6, (testClientOne.client to JoinMessage.Message(source = prefix("someone_else"), channels = listOf("#somewhere"))))
     }
 
     @Test fun `when a client joins multiple channels, each gets a JOIN`() {
@@ -116,10 +116,8 @@ class ChannelsUseCaseTests {
 
         joins.onNext(JoinMessage.Command(channels = listOf("#somewhere", "#somewhere_else")))
 
-        inOrder(mockConnections) {
-            verify(mockConnections).send(id = 1, message = JoinMessage.Message(source = testClient.prefix, channels = listOf("#somewhere")))
-            verify(mockConnections).send(id = 1, message = JoinMessage.Message(source = testClient.prefix, channels = listOf("#somewhere_else")))
-        }
+        sends.assertValueAt(0, testClient.client to JoinMessage.Message(source = testClient.prefix, channels = listOf("#somewhere")))
+        sends.assertValueAt(3, testClient.client to JoinMessage.Message(source = testClient.prefix, channels = listOf("#somewhere_else")))
     }
 
     @Test fun `when a client joins a nonexistent channel, it is created`() {
@@ -181,9 +179,10 @@ class ChannelsUseCaseTests {
         sut.track(testClientTwo.client)
         clientTwoJoins.onNext(JoinMessage.Command(channels = listOf("#existing_channel")))
 
+        sends = mockClients.sendSubject.test()
         clientOneParts.onNext(PartMessage.Command(channels = listOf("#existing_channel")))
 
-        verify(mockConnections).send(id = 1, message = PartMessage.Message(source = testClientOne.prefix, channels = listOf("#existing_channel")))
+        sends.assertValue(testClientOne.client to PartMessage.Message(source = testClientOne.prefix, channels = listOf("#existing_channel")))
     }
 
     @Test fun `when a client parts multiple channels, each gets a PART`() {
@@ -193,12 +192,13 @@ class ChannelsUseCaseTests {
         sut.track(testClient.client)
         joins.onNext(JoinMessage.Command(channels = listOf("#somewhere", "#somewhere_else")))
 
+        sends = mockClients.sendSubject.test()
         parts.onNext(PartMessage.Command(channels = listOf("#somewhere", "#somewhere_else")))
 
-        inOrder(mockConnections) {
-            verify(mockConnections).send(id = 1, message = PartMessage.Message(source = testClient.prefix, channels = listOf("#somewhere")))
-            verify(mockConnections).send(id = 1, message = PartMessage.Message(source = testClient.prefix, channels = listOf("#somewhere_else")))
-        }
+        sends.assertValues(
+                (testClient.client to PartMessage.Message(source = testClient.prefix, channels = listOf("#somewhere"))),
+                (testClient.client to PartMessage.Message(source = testClient.prefix, channels = listOf("#somewhere_else")))
+        )
     }
 
     @Test fun `when a client JOINs a channel, the channel contains them`() {
@@ -220,19 +220,22 @@ class ChannelsUseCaseTests {
         val clientTwoParts = testClientTwo.mock(PartMessage.Command.Descriptor)
         sut.track(testClientOne.client)
         sut.track(testClientTwo.client)
-        whenever(mockClients.lookUpClient("someone")).thenReturn(testClientOne.client)
-        whenever(mockClients.lookUpClient("someone_else")).thenReturn(testClientTwo.client)
+        mockClients.stubLookUpClients = mapOf(
+                "someone" to testClientOne.client,
+                "someone_else" to testClientTwo.client
+        )
         clientOneJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
         clientTwoJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
 
+        val partSends = mockClients.sendSubject.test()
         clientOneParts.onNext(PartMessage.Command(channels = listOf("#somewhere")))
         clientTwoParts.onNext(PartMessage.Command(channels = listOf("#somewhere")))
 
-        inOrder(mockConnections) {
-            verify(mockConnections).send(id = 1, message = PartMessage.Message(source = prefix("someone"), channels = listOf("#somewhere")))
-            verify(mockConnections).send(id = 2, message = PartMessage.Message(source = prefix("someone"), channels = listOf("#somewhere")))
-            verify(mockConnections).send(id = 2, message = PartMessage.Message(source = prefix("someone_else"), channels = listOf("#somewhere")))
-        }
+        partSends.assertValues(
+                (testClientOne.client to PartMessage.Message(source = prefix("someone"), channels = listOf("#somewhere"))),
+                (testClientTwo.client to PartMessage.Message(source = prefix("someone"), channels = listOf("#somewhere"))),
+                (testClientTwo.client to PartMessage.Message(source = prefix("someone_else"), channels = listOf("#somewhere")))
+        )
     }
 
     @Test fun `when a two clients JOIN a channel, the channel contains both of them`() {
@@ -269,9 +272,10 @@ class ChannelsUseCaseTests {
         sut.track(testClientOne.client)
         clientOneJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
 
-        droppeds.onNext(testClientOne.client)
+        sends = mockClients.sendSubject.test()
+        mockClients.droppedSubject.onNext(testClientOne.client)
 
-        verify(mockConnections, never()).send(any(), any<PartMessage.Message>())
+        sends.assertEmpty()
     }
 
     @Test fun `when there's multiple users in a channel, and one of them drops, send PARTs to all the other users`() {
@@ -281,9 +285,11 @@ class ChannelsUseCaseTests {
         val clientOneJoins = testClientOne.mock(JoinMessage.Command.Descriptor)
         val clientTwoJoins = testClientTwo.mock(JoinMessage.Command.Descriptor)
         val clientThreeJoins = testClientThree.mock(JoinMessage.Command.Descriptor)
-        whenever(mockClients.lookUpClient("someone")).thenReturn(testClientOne.client)
-        whenever(mockClients.lookUpClient("someone_else_1")).thenReturn(testClientTwo.client)
-        whenever(mockClients.lookUpClient("someone_else_2")).thenReturn(testClientThree.client)
+        mockClients.stubLookUpClients = mapOf(
+                "someone" to testClientOne.client,
+                "someone_else_1" to testClientTwo.client,
+                "someone_else_2" to testClientThree.client
+        )
         sut.track(testClientOne.client)
         sut.track(testClientTwo.client)
         sut.track(testClientThree.client)
@@ -291,12 +297,13 @@ class ChannelsUseCaseTests {
         clientTwoJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
         clientThreeJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
 
-        droppeds.onNext(testClientOne.client)
+        sends = mockClients.sendSubject.test()
+        mockClients.droppedSubject.onNext(testClientOne.client)
 
-        inOrder(mockConnections) {
-            verify(mockConnections).send(id = 2, message = PartMessage.Message(source = prefix("someone"), channels = listOf("#somewhere")))
-            verify(mockConnections).send(id = 3, message = PartMessage.Message(source = prefix("someone"), channels = listOf("#somewhere")))
-        }
+        sends.assertValues(
+                (testClientTwo.client to PartMessage.Message(source = prefix("someone"), channels = listOf("#somewhere"))),
+                (testClientThree.client to PartMessage.Message(source = prefix("someone"), channels = listOf("#somewhere")))
+        )
     }
 
 }
