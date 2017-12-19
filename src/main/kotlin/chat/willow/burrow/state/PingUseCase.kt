@@ -17,7 +17,7 @@ interface IPingUseCase {
 
 }
 
-class PingUseCase(private val connections: IConnectionTracker, private val scheduler: Scheduler = Schedulers.computation()): IPingUseCase {
+class PingUseCase(private val connections: IConnectionTracker, private val clients: IClientsUseCase, private val scheduler: Scheduler = Schedulers.computation()): IPingUseCase {
 
     override val timeout = PublishSubject.create<ClientTracker.ConnectedClient>()
 
@@ -29,11 +29,13 @@ class PingUseCase(private val connections: IConnectionTracker, private val sched
                 .observe(PingMessage.Command.Descriptor)
                 .subscribe { handlePing(it, client) }
 
+        val clientDropped = clients.dropped.filter { it == client }
+
         val pongResponses = Observable.just(client)
                 .delay(PING_AFTER_SECONDS, TimeUnit.SECONDS, scheduler)
-                .map { client }
                 .flatMap { pingClient(client, token = "bunnies") }
                 .repeat()
+                .takeUntil(clientDropped)
 
         pongResponses
                 .subscribeBy(

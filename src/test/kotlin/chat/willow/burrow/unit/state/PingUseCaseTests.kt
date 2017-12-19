@@ -1,6 +1,8 @@
 package chat.willow.burrow.unit.state
 
 import chat.willow.burrow.connection.IConnectionTracker
+import chat.willow.burrow.state.ClientTracker
+import chat.willow.burrow.state.IClientsUseCase
 import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.state.PingUseCase
 import chat.willow.burrow.utility.KaleUtilities.mockKale
@@ -9,6 +11,7 @@ import chat.willow.kale.irc.message.rfc1459.PongMessage
 import chat.willow.kale.irc.prefix.prefix
 import com.nhaarman.mockito_kotlin.*
 import io.reactivex.schedulers.TestScheduler
+import io.reactivex.subjects.PublishSubject
 import org.junit.Before
 import org.junit.Test
 import java.util.concurrent.TimeUnit
@@ -18,15 +21,20 @@ class PingUseCaseTests {
     private lateinit var sut: PingUseCase
 
     private lateinit var mockConnections: IConnectionTracker
+    private lateinit var mockClients: IClientsUseCase
 
     private lateinit var scheduler: TestScheduler
 
+    private val drops = PublishSubject.create<ClientTracker.ConnectedClient>()
+
     @Before fun setUp() {
         mockConnections = mock()
+        mockClients = mock()
+        whenever(mockClients.dropped).thenReturn(drops)
 
         scheduler = TestScheduler()
 
-        sut = PingUseCase(mockConnections, scheduler)
+        sut = PingUseCase(mockConnections, mockClients, scheduler)
     }
 
     @Test fun `when a client is tracked, we start responding to client pings`() {
@@ -106,6 +114,30 @@ class PingUseCaseTests {
         reset(mockConnections)
         pongs.onNext(PongMessage.Message(token = "bunnies"))
         timeouts.assertEmpty()
+    }
+
+    @Test fun `after a client is dropped, they're not sent any more pings`() {
+        val testClient = makeClient()
+        val timeouts = sut.timeout.test()
+        sut.track(testClient.client)
+
+        drops.onNext(testClient.client)
+        scheduler.advanceTimeBy(30, TimeUnit.SECONDS)
+        scheduler.advanceTimeBy(30, TimeUnit.SECONDS)
+
+        verifyZeroInteractions(mockConnections)
+        timeouts.assertEmpty()
+    }
+
+    @Test fun `after a different client is dropped, pings are still sent to the tracked client`() {
+        val testClientOne = makeClient(id = 1)
+        val testClientTwo = makeClient(id = 2)
+        sut.track(testClientOne.client)
+
+        drops.onNext(testClientTwo.client)
+        scheduler.advanceTimeBy(30, TimeUnit.SECONDS)
+
+        verify(mockConnections).send(id = 1, message = PingMessage.Command(token = "bunnies"))
     }
 
 }

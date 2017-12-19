@@ -29,7 +29,7 @@ class ClientsUseCase(val connections: IConnectionTracker): IClientsUseCase {
     override val dropped = PublishSubject.create<ClientTracker.ConnectedClient>()
 
     private val channels = ChannelsUseCase(connections, this)
-    private val ping = PingUseCase(connections)
+    private val ping = PingUseCase(connections, this)
     private val channelMessages = ChannelMessagesUseCase(connections, channels, this)
 
     private val clients = CaseInsensitiveNamedMap<ClientTracker.ConnectedClient>(mapper = Burrow.Server.MAPPER)
