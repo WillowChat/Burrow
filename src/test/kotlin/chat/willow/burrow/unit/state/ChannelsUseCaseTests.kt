@@ -1,11 +1,8 @@
 package chat.willow.burrow.unit.state
 
 import chat.willow.burrow.connection.IConnectionTracker
+import chat.willow.burrow.state.*
 import chat.willow.burrow.utility.makeClient
-import chat.willow.burrow.state.ChannelsUseCase
-import chat.willow.burrow.state.ClientTracker
-import chat.willow.burrow.state.IClientsUseCase
-import chat.willow.burrow.state.Rpl403Message
 import chat.willow.kale.irc.CharacterCodes
 import chat.willow.kale.irc.message.rfc1459.JoinMessage
 import chat.willow.kale.irc.message.rfc1459.PartMessage
@@ -70,7 +67,7 @@ class ChannelsUseCaseTests {
         verify(mockConnections).send(id = 1, message = message)
     }
 
-    @Test fun `when a client joins a channel, and the channel was empty, send a NAMREPLY with current users`() {
+    @Test fun `when a client joins a channel, and the channel was empty, send a NAMREPLY with current users and an ENDOFNAMES`() {
         val testClientOne = makeClient(id = 1, prefix = Prefix(nick = "someone"))
         val clientOneJoins = testClientOne.mock(JoinMessage.Command.Descriptor)
         val testClientTwo = makeClient(id = 2, prefix = Prefix(nick = "someone_else"))
@@ -83,8 +80,13 @@ class ChannelsUseCaseTests {
         clientTwoJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
 
         val names = listOf("someone", "someone_else")
-        val message = Rpl353Message.Message(source = "bunnies.", target = "someone_else", visibility = CharacterCodes.EQUALS.toString(), channel = "#somewhere", names = names)
-        verify(mockConnections).send(id = 2, message = message)
+        val namReplyMessage = Rpl353Message.Message(source = "bunnies.", target = "someone_else", visibility = CharacterCodes.EQUALS.toString(), channel = "#somewhere", names = names)
+        val endOfNamesMessage = Rpl366Message.Message(source = "bunnies.", target = "someone_else", channel = "#somewhere", content = "End of /NAMES list")
+
+        inOrder(mockConnections) {
+            verify(mockConnections).send(id = 2, message = namReplyMessage)
+            verify(mockConnections).send(id = 2, message = endOfNamesMessage)
+        }
     }
 
     @Test fun `when a client joins a channel, and the channel wasn't empty, send a JOIN to all the other clients`() {

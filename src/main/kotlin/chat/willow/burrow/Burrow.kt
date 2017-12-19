@@ -69,6 +69,7 @@ object Burrow {
         router.register(Rpl001Message.Message::class, Rpl001Message.Serialiser)
         router.register(Rpl433Message.Message::class, Rpl433Message.Serialiser)
         router.register(Rpl403Message.Message::class, Rpl403Message.Serialiser)
+        router.register(Rpl366Message.Message::class, Rpl366Message.Serialiser)
         router.register(Rpl353Message.Message::class, Rpl353Message.Message.Serialiser)
 
         router.register(PingMessage.Command::class, PingMessage.Command.Serialiser)

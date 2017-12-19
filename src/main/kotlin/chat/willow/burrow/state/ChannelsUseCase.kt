@@ -45,6 +45,17 @@ object Rpl403Message : ICommand {
 
 }
 
+object Rpl366Message : ICommand {
+
+    override val command = "366"
+
+    class Message(source: String, target: String, channel: String, content: String): RplSourceTargetChannelContent.Message(source, target, channel, content)
+    object Parser : RplSourceTargetChannelContent.Parser(command)
+    object Serialiser : RplSourceTargetChannelContent.Serialiser(command)
+    object Descriptor : RplSourceTargetChannelContent.Descriptor(command, Parser)
+
+}
+
 class ChannelsUseCase(private val connections: IConnectionTracker, val clients: IClientsUseCase): IChannelsUseCase {
 
     private val LOGGER = loggerFor<ChannelsUseCase>()
@@ -93,7 +104,10 @@ class ChannelsUseCase(private val connections: IConnectionTracker, val clients: 
         // todo: permissions for users - @ etc as a prefix
         val users = channel.users.all.values.map { it.prefix.nick }
         val namReplyMessage = Rpl353Message.Message(source = "bunnies.", target = client.name, visibility = CharacterCodes.EQUALS.toString(), channel = channel.name, names = users)
+        val endOfNamesMessage = Rpl366Message.Message(source = "bunnies.", target = client.name, channel = channelName, content = "End of /NAMES list")
+
         connections.send(client.connection.id, namReplyMessage)
+        connections.send(client.connection.id, endOfNamesMessage)
 
         // todo: batch sending up?
         val otherUsers = (users.toSet() - client.name).mapNotNull { clients.lookUpClient(it) }
