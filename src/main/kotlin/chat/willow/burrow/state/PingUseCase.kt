@@ -4,7 +4,9 @@ import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.kale.KaleObservable
 import chat.willow.kale.irc.message.rfc1459.PingMessage
 import chat.willow.kale.irc.message.rfc1459.PongMessage
-import io.reactivex.*
+import io.reactivex.Observable
+import io.reactivex.Observer
+import io.reactivex.Scheduler
 import io.reactivex.rxkotlin.subscribeBy
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject

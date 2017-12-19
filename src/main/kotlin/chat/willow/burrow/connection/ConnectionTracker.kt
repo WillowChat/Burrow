@@ -8,7 +8,6 @@ import chat.willow.burrow.connection.network.INetworkSocket
 import chat.willow.burrow.connection.network.ISocketProcessor
 import chat.willow.burrow.connection.network.SocketProcessor
 import chat.willow.burrow.helper.loggerFor
-import chat.willow.burrow.state.IConnectionIdHaving
 import chat.willow.kale.IKale
 import chat.willow.kale.irc.message.IrcMessageSerialiser
 import io.reactivex.Observable

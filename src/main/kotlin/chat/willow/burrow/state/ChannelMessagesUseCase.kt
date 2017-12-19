@@ -1,7 +1,6 @@
 package chat.willow.burrow.state
 
 import chat.willow.burrow.Burrow
-import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.kale.ICommand
 import chat.willow.kale.KaleObservable
 import chat.willow.kale.irc.message.rfc1459.PrivMsgMessage

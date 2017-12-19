@@ -2,7 +2,6 @@ package chat.willow.burrow.state
 
 import chat.willow.burrow.Burrow
 import chat.willow.burrow.Burrow.Validation.channel
-import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.ICommand
 import chat.willow.kale.KaleObservable

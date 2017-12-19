@@ -1,7 +1,6 @@
 package chat.willow.burrow.state
 
 import chat.willow.burrow.Burrow
-import chat.willow.burrow.Burrow.Validation.alphanumeric
 import chat.willow.burrow.Burrow.Validation.nick
 import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.connection.IConnectionTracker
@@ -11,7 +10,6 @@ import chat.willow.kale.IKale
 import chat.willow.kale.irc.message.extension.cap.CapMessage
 import chat.willow.kale.irc.message.rfc1459.NickMessage
 import chat.willow.kale.irc.message.rfc1459.UserMessage
-import chat.willow.kale.irc.message.rfc1459.rpl.RplSourceTargetChannelContent
 import chat.willow.kale.irc.message.rfc1459.rpl.RplSourceTargetContent
 import chat.willow.kale.irc.prefix.Prefix
 import io.reactivex.Observable
