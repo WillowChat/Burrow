@@ -3,15 +3,14 @@ package chat.willow.burrow.state
 import chat.willow.burrow.Burrow
 import chat.willow.burrow.Burrow.Validation.channel
 import chat.willow.burrow.helper.loggerFor
-import chat.willow.kale.ICommand
-import chat.willow.kale.KaleObservable
+import chat.willow.kale.core.message.KaleObservable
+import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.helper.CaseInsensitiveNamedMap
 import chat.willow.kale.helper.INamed
 import chat.willow.kale.irc.CharacterCodes
 import chat.willow.kale.irc.message.rfc1459.JoinMessage
 import chat.willow.kale.irc.message.rfc1459.PartMessage
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl353Message
-import chat.willow.kale.irc.message.rfc1459.rpl.RplSourceTargetChannelContent
 import chat.willow.kale.irc.prefix.Prefix
 
 interface IChannelsUseCase {
@@ -29,30 +28,6 @@ data class Channel(override val name: String,
 data class ChannelUser(val prefix: Prefix): INamed {
     override val name: String
         get() = prefix.nick
-}
-
-// todo: move in to Kale
-
-object Rpl403Message : ICommand {
-
-    override val command = "403"
-
-    class Message(source: String, target: String, channel: String, content: String): RplSourceTargetChannelContent.Message(source, target, channel, content)
-    object Parser : RplSourceTargetChannelContent.Parser(command)
-    object Serialiser : RplSourceTargetChannelContent.Serialiser(command)
-    object Descriptor : RplSourceTargetChannelContent.Descriptor(command, Parser)
-
-}
-
-object Rpl366Message : ICommand {
-
-    override val command = "366"
-
-    class Message(source: String, target: String, channel: String, content: String): RplSourceTargetChannelContent.Message(source, target, channel, content)
-    object Parser : RplSourceTargetChannelContent.Parser(command)
-    object Serialiser : RplSourceTargetChannelContent.Serialiser(command)
-    object Descriptor : RplSourceTargetChannelContent.Descriptor(command, Parser)
-
 }
 
 class ChannelsUseCase(val clients: IClientsUseCase): IChannelsUseCase {
@@ -88,7 +63,7 @@ class ChannelsUseCase(val clients: IClientsUseCase): IChannelsUseCase {
     }
 
     private fun sendNoSuchChannel(channelName: String, client: ClientTracker.ConnectedClient) {
-        val noSuchChannelMessage = Rpl403Message.Message(source = "bunnies.", target = client.name, channel = channelName, content = "No such channel")
+        val noSuchChannelMessage = KaleNumerics.NOSUCHCHANNEL.Message(source = "bunnies.", target = client.name, channel = channelName, content = "No such channel")
         clients.send.onNext(client to noSuchChannelMessage)
     }
 
@@ -103,7 +78,7 @@ class ChannelsUseCase(val clients: IClientsUseCase): IChannelsUseCase {
         // todo: permissions for users - @ etc as a prefix
         val users = channel.users.all.values.map { it.prefix.nick }
         val namReplyMessage = Rpl353Message.Message(source = "bunnies.", target = client.name, visibility = CharacterCodes.EQUALS.toString(), channel = channel.name, names = users)
-        val endOfNamesMessage = Rpl366Message.Message(source = "bunnies.", target = client.name, channel = channelName, content = "End of /NAMES list")
+        val endOfNamesMessage = KaleNumerics.ENDOFNAMES.Message(source = "bunnies.", target = client.name, channel = channelName, content = "End of /NAMES list")
 
         clients.send.onNext(client to namReplyMessage)
         clients.send.onNext(client to endOfNamesMessage)

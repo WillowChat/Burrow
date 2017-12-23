@@ -16,29 +16,18 @@ val kotlinVersion by project
 
 val projectTitle = "Burrow"
 
-buildscript {
-    val buildscriptKotlinVersion = "1.2.0"
-
-    repositories {
-        gradleScriptKotlin()
-        jcenter()
-    }
-
-    dependencies {
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$buildscriptKotlinVersion")
-        classpath("com.github.jengelman.gradle.plugins:shadow:1.2.3")
-    }
-}
-
 apply {
-    plugin("com.github.johnrengelman.shadow")
     plugin("maven")
     plugin("maven-publish")
     plugin("jacoco")
+    plugin("idea")
 }
 
 plugins {
-    kotlin("jvm") version "1.2.0"
+    java
+    kotlin("jvm") version "1.2.10"
+    kotlin("kapt") version "1.2.10"
+    id("com.github.johnrengelman.shadow") version "2.0.2"
 }
 
 jacoco {
@@ -81,19 +70,20 @@ repositories {
 }
 
 dependencies {
-    compile(kotlinModule("stdlib", kotlinVersion as String))
-    compile(kotlinModule("reflect", kotlinVersion as String))
-    compile("org.slf4j:slf4j-api:1.7.21")
-    compile("chat.willow.kale:Kale:$kaleVersion")
-    compile("com.squareup.okio:okio:1.11.0")
-    compile("io.reactivex.rxjava2:rxjava:2.1.6")
-    compile("io.reactivex.rxjava2:rxkotlin:2.1.0")
+    implementation(kotlin("stdlib", kotlinVersion as String))
+    implementation(kotlin("reflect", kotlinVersion as String))
+    implementation("org.slf4j:slf4j-api:1.7.21")
+    implementation("chat.willow.kale:Kale:$kaleVersion")
+    kapt("chat.willow.kale:Kale:$kaleVersion")
+    implementation("com.squareup.okio:okio:1.11.0")
+    implementation("io.reactivex.rxjava2:rxjava:2.1.6")
+    implementation("io.reactivex.rxjava2:rxkotlin:2.1.0")
 
     runtime("org.slf4j:slf4j-simple:1.7.21")
 
-    testCompile("junit:junit:4.12")
-    testCompile("org.mockito:mockito-core:2.2.9")
-    testCompile("com.nhaarman:mockito-kotlin:1.2.0")
+    testImplementation("junit:junit:4.12")
+    testImplementation("org.mockito:mockito-core:2.2.9")
+    testImplementation("com.nhaarman:mockito-kotlin:1.2.0")
 }
 
 test {

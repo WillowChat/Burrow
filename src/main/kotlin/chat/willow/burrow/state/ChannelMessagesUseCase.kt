@@ -1,27 +1,13 @@
 package chat.willow.burrow.state
 
 import chat.willow.burrow.Burrow
-import chat.willow.kale.ICommand
-import chat.willow.kale.KaleObservable
+import chat.willow.kale.core.message.KaleObservable
+import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.irc.message.rfc1459.PrivMsgMessage
-import chat.willow.kale.irc.message.rfc1459.rpl.RplSourceTargetChannelContent
 
 interface IChannelMessagesUseCase {
 
     fun track(client: ClientTracker.ConnectedClient)
-
-}
-
-// todo: move in to Kale
-
-object Rpl404Message : ICommand {
-
-    override val command = "404"
-
-    class Message(source: String, target: String, channel: String, content: String): RplSourceTargetChannelContent.Message(source, target, channel, content)
-    object Parser : RplSourceTargetChannelContent.Parser(command)
-    object Serialiser : RplSourceTargetChannelContent.Serialiser(command)
-    object Descriptor : RplSourceTargetChannelContent.Descriptor(command, Parser)
 
 }
 
@@ -49,7 +35,7 @@ class ChannelMessagesUseCase(private val channels: IChannelsUseCase, private val
     }
 
     private fun sendCannotSendToChan(client: ClientTracker.ConnectedClient, channelName: String, message: String) {
-        val messageToSend = Rpl404Message.Message(source = "bunnies.", target = client.name, channel = channelName, content = message)
+        val messageToSend = KaleNumerics.CANNOTSENDTOCHAN.Message(source = "bunnies.", target = client.name, channel = channelName, content = message)
         clients.send.onNext(client to messageToSend)
     }
 

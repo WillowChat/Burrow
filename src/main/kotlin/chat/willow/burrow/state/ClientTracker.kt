@@ -8,9 +8,9 @@ import chat.willow.kale.IKale
 import chat.willow.kale.Kale
 import chat.willow.kale.KaleMetadataFactory
 import chat.willow.kale.KaleRouter
+import chat.willow.kale.core.tag.KaleTagRouter
 import chat.willow.kale.helper.INamed
 import chat.willow.kale.irc.prefix.Prefix
-import chat.willow.kale.irc.tag.KaleTagRouter
 import io.reactivex.Observer
 import io.reactivex.rxkotlin.subscribeBy
 import io.reactivex.schedulers.Schedulers

@@ -5,12 +5,11 @@ import chat.willow.burrow.Burrow.Validation.nick
 import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.helper.loggerFor
-import chat.willow.kale.ICommand
 import chat.willow.kale.IKale
+import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.irc.message.extension.cap.CapMessage
 import chat.willow.kale.irc.message.rfc1459.NickMessage
 import chat.willow.kale.irc.message.rfc1459.UserMessage
-import chat.willow.kale.irc.message.rfc1459.rpl.RplSourceTargetContent
 import chat.willow.kale.irc.prefix.Prefix
 import io.reactivex.Observable
 import io.reactivex.Scheduler
@@ -22,19 +21,6 @@ import java.util.concurrent.TimeUnit
 interface IRegistrationUseCase {
 
     fun track(kale: IKale, caps: Map<String, String?> = mapOf(), connection: BurrowConnection): Observable<RegistrationUseCase.Registered>
-
-}
-
-// todo: move in to Kale
-
-object Rpl433Message : ICommand {
-
-    override val command = "433"
-
-    class Message(source: String, target: String, content: String): RplSourceTargetContent.Message(source, target, content)
-    object Parser : RplSourceTargetContent.Parser(command)
-    object Serialiser : RplSourceTargetContent.Serialiser(command)
-    object Descriptor : RplSourceTargetContent.Descriptor(command, Parser)
 
 }
 
@@ -151,7 +137,7 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
 
     private fun sendAlreadyExists(nickAndConnection: Pair<String, BurrowConnection>) {
         val (nick, connection) = nickAndConnection
-        val message = Rpl433Message.Message(source = "bunnies.", target = nick, content = "Nickname is already in use")
+        val message = KaleNumerics.NICKNAMEINUSE.Message(source = "bunnies.", target = nick, content = "Nickname is already in use")
         connections.send.onNext(connection.id to message)
     }
 

@@ -5,17 +5,17 @@ import chat.willow.burrow.connection.line.ILineAccumulator
 import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.connection.network.INetworkSocket
 import chat.willow.burrow.state.RegistrationUseCase
-import chat.willow.burrow.state.Rpl433Message
 import chat.willow.burrow.unit.connection.network.MockConnectionTracker
 import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.utility.mockKaleObservable
 import chat.willow.kale.IKale
-import chat.willow.kale.KaleObservable
+import chat.willow.kale.core.message.KaleObservable
+import chat.willow.kale.core.tag.TagStore
+import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.irc.message.extension.cap.CapMessage
 import chat.willow.kale.irc.message.rfc1459.NickMessage
 import chat.willow.kale.irc.message.rfc1459.UserMessage
 import chat.willow.kale.irc.prefix.Prefix
-import chat.willow.kale.irc.tag.TagStore
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.whenever
 import io.reactivex.observers.TestObserver
@@ -167,7 +167,7 @@ class RegistrationUseCaseTests {
         mockNick.onNext(NickMessage.Command("alreadyTakenNick"))
 
         observer.assertEmpty()
-        sends.assertValue(connection.id to Rpl433Message.Message(source = "bunnies.", target = "alreadyTakenNick", content = "Nickname is already in use"))
+        sends.assertValue(connection.id to KaleNumerics.NICKNAMEINUSE.Message(source = "bunnies.", target = "alreadyTakenNick", content = "Nickname is already in use"))
     }
 
 }

@@ -4,6 +4,7 @@ import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.state.*
 import chat.willow.burrow.unit.connection.network.MockConnectionTracker
 import chat.willow.burrow.utility.makeClient
+import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.irc.CharacterCodes
 import chat.willow.kale.irc.message.rfc1459.JoinMessage
 import chat.willow.kale.irc.message.rfc1459.PartMessage
@@ -50,7 +51,7 @@ class ChannelsUseCaseTests {
 
         joins.onNext(JoinMessage.Command(channels = listOf("#somewhere!")))
 
-        val message = Rpl403Message.Message(source = "bunnies.", target = "someone", channel = "#somewhere!", content = "No such channel")
+        val message = KaleNumerics.NOSUCHCHANNEL.Message(source = "bunnies.", target = "someone", channel = "#somewhere!", content = "No such channel")
         sends.assertValue(testClient.client to message)
     }
 
@@ -83,7 +84,7 @@ class ChannelsUseCaseTests {
 
         val names = listOf("someone", "someone_else")
         val namReplyMessage = Rpl353Message.Message(source = "bunnies.", target = "someone_else", visibility = CharacterCodes.EQUALS.toString(), channel = "#somewhere", names = names)
-        val endOfNamesMessage = Rpl366Message.Message(source = "bunnies.", target = "someone_else", channel = "#somewhere", content = "End of /NAMES list")
+        val endOfNamesMessage = KaleNumerics.ENDOFNAMES.Message(source = "bunnies.", target = "someone_else", channel = "#somewhere", content = "End of /NAMES list")
 
         sends.assertValueAt(4, (testClientTwo.client to namReplyMessage))
         sends.assertValueAt(5, (testClientTwo.client to endOfNamesMessage))

@@ -7,7 +7,7 @@ import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.state.ClientTracker
 import chat.willow.burrow.unit.state.message
 import chat.willow.kale.IKale
-import chat.willow.kale.KaleDescriptor
+import chat.willow.kale.core.message.KaleDescriptor
 import chat.willow.kale.helper.CaseInsensitiveNamedMap
 import chat.willow.kale.helper.INamed
 import chat.willow.kale.irc.prefix.Prefix

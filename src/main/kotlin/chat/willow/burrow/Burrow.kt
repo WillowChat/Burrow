@@ -7,14 +7,14 @@ import chat.willow.burrow.helper.ThreadInterruptedChecker
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.burrow.state.*
 import chat.willow.kale.*
+import chat.willow.kale.core.tag.KaleTagRouter
+import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.helper.CaseMapping
 import chat.willow.kale.helper.ICaseMapper
 import chat.willow.kale.irc.message.extension.cap.CapMessage
 import chat.willow.kale.irc.message.rfc1459.*
-import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001Message
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl353Message
 import chat.willow.kale.irc.message.utility.RawMessage
-import chat.willow.kale.irc.tag.KaleTagRouter
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
@@ -64,12 +64,10 @@ object Burrow {
         router.register(PartMessage.Message::class, PartMessage.Message.Serialiser)
         router.register(PrivMsgMessage.Message::class, PrivMsgMessage.Message.Serialiser)
 
-
-        // todo: reuse code without messageClass clashing b/c of typealias
-        router.register(Rpl001Message.Message::class, Rpl001Message.Serialiser)
-        router.register(Rpl433Message.Message::class, Rpl433Message.Serialiser)
-        router.register(Rpl403Message.Message::class, Rpl403Message.Serialiser)
-        router.register(Rpl366Message.Message::class, Rpl366Message.Serialiser)
+        router.register(KaleNumerics.WELCOME.Message::class, KaleNumerics.WELCOME.Serialiser)
+        router.register(KaleNumerics.NICKNAMEINUSE.Message::class, KaleNumerics.NICKNAMEINUSE.Serialiser)
+        router.register(KaleNumerics.NOSUCHCHANNEL.Message::class, KaleNumerics.NOSUCHCHANNEL.Serialiser)
+        router.register(KaleNumerics.ENDOFNAMES.Message::class, KaleNumerics.ENDOFNAMES.Serialiser)
         router.register(Rpl353Message.Message::class, Rpl353Message.Message.Serialiser)
 
         router.register(PingMessage.Command::class, PingMessage.Command.Serialiser)

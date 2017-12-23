@@ -5,6 +5,7 @@ import chat.willow.burrow.state.*
 import chat.willow.burrow.unit.connection.network.MockConnectionTracker
 import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.utility.namedMap
+import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.helper.CaseInsensitiveNamedMap
 import chat.willow.kale.irc.message.rfc1459.PrivMsgMessage
 import chat.willow.kale.irc.prefix.prefix
@@ -43,7 +44,7 @@ class ChannelMessagesUseCaseTests {
 
         privMsgs.onNext(PrivMsgMessage.Command(target = "not_valid", message = "something"))
 
-        sends.assertValue(testClientOne.client to Rpl404Message.Message(source = "bunnies.", target = "someone", channel = "not_valid", content = "Invalid channel name"))
+        sends.assertValue(testClientOne.client to KaleNumerics.CANNOTSENDTOCHAN.Message(source = "bunnies.", target = "someone", channel = "not_valid", content = "Invalid channel name"))
     }
 
     @Test fun `when a client sends a message to a nonexistent channel, send an error back`() {
@@ -54,7 +55,7 @@ class ChannelMessagesUseCaseTests {
 
         privMsgs.onNext(PrivMsgMessage.Command(target = "#somewhere", message = "something"))
 
-        sends.assertValue(testClientOne.client to Rpl404Message.Message(source = "bunnies.", target = "someone", channel = "#somewhere", content = "Channel doesn't exist"))
+        sends.assertValue(testClientOne.client to KaleNumerics.CANNOTSENDTOCHAN.Message(source = "bunnies.", target = "someone", channel = "#somewhere", content = "Channel doesn't exist"))
     }
 
     @Test fun `when a client sends a message to a channel they aren't in, send an error back`() {
@@ -66,7 +67,7 @@ class ChannelMessagesUseCaseTests {
 
         privMsgs.onNext(PrivMsgMessage.Command(target = "#somewhere", message = "something"))
 
-        sends.assertValue(testClientOne.client to Rpl404Message.Message(source = "bunnies.", target = "someone", channel = "#somewhere", content = "You're not in that channel"))
+        sends.assertValue(testClientOne.client to KaleNumerics.CANNOTSENDTOCHAN.Message(source = "bunnies.", target = "someone", channel = "#somewhere", content = "You're not in that channel"))
     }
 
     @Test fun `when a client sends an invalid message to a channel, send an error back`() {
@@ -78,7 +79,7 @@ class ChannelMessagesUseCaseTests {
 
         privMsgs.onNext(PrivMsgMessage.Command(target = "#somewhere", message = ""))
 
-        sends.assertValue(testClientOne.client to Rpl404Message.Message(source = "bunnies.", target = "someone", channel = "#somewhere", content = "That message was invalid"))
+        sends.assertValue(testClientOne.client to KaleNumerics.CANNOTSENDTOCHAN.Message(source = "bunnies.", target = "someone", channel = "#somewhere", content = "That message was invalid"))
     }
 
     @Test fun `when a client sends an valid message to a valid channel, send the message to other clients in the channel`() {

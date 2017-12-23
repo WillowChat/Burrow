@@ -4,8 +4,8 @@ import chat.willow.burrow.Burrow
 import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.helper.loggerFor
+import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.helper.CaseInsensitiveNamedMap
-import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001Message
 import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.subjects.PublishSubject
@@ -45,7 +45,7 @@ class ClientsUseCase(connections: IConnectionTracker): IClientsUseCase {
     }
 
     private fun track(client: ClientTracker.ConnectedClient) {
-        send.onNext(client to Rpl001Message.Message(source = "bunnies.", target = client.prefix.nick, content = "welcome to burrow"))
+        send.onNext(client to KaleNumerics.WELCOME.Message(source = "bunnies.", target = client.prefix.nick, content = "welcome to burrow"))
 
         ping.track(client)
         channels.track(client)

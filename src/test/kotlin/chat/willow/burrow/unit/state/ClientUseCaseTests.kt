@@ -7,7 +7,7 @@ import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.state.ClientsUseCase
 import chat.willow.burrow.state.IClientsUseCase
 import chat.willow.burrow.unit.connection.network.MockConnectionTracker
-import chat.willow.kale.irc.message.rfc1459.rpl.Rpl001Message
+import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.irc.prefix.prefix
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.verify
@@ -39,7 +39,7 @@ class ClientUseCaseTests {
 
         sut.track.onNext(client)
 
-        sends.assertValue(1 to Rpl001Message.Message(source = "bunnies.", target = "someone", content = "welcome to burrow"))
+        sends.assertValue(1 to KaleNumerics.WELCOME.Message(source = "bunnies.", target = "someone", content = "welcome to burrow"))
     }
 
     @Test fun `after tracking a client, we can look them up by username`() {

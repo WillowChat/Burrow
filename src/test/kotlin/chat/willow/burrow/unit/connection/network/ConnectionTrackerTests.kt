@@ -12,9 +12,7 @@ import chat.willow.burrow.connection.network.INetworkSocket
 import chat.willow.burrow.connection.network.ISocketProcessor
 import chat.willow.burrow.connection.network.SocketProcessor
 import chat.willow.kale.IKale
-import chat.willow.kale.irc.message.IrcMessage
-import chat.willow.kale.irc.message.IrcMessageSerialiser
-import chat.willow.kale.irc.message.utility.RawMessage
+import chat.willow.kale.core.message.IrcMessage
 import com.nhaarman.mockito_kotlin.any
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.verify
@@ -27,7 +25,6 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import java.nio.ByteBuffer
-import java.sql.Connection
 
 class ConnectionTrackerTests {
 

@@ -6,9 +6,9 @@ import chat.willow.burrow.connection.line.LineAccumulator
 import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.state.*
 import chat.willow.kale.IKale
-import chat.willow.kale.KaleDescriptor
-import chat.willow.kale.KaleObservable
-import chat.willow.kale.irc.message.IrcMessage
+import chat.willow.kale.core.message.IrcMessage
+import chat.willow.kale.core.message.KaleDescriptor
+import chat.willow.kale.core.message.KaleObservable
 import com.nhaarman.mockito_kotlin.*
 import io.reactivex.subjects.PublishSubject
 import org.junit.Before

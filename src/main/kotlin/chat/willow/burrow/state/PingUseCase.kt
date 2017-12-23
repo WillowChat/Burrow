@@ -1,6 +1,6 @@
 package chat.willow.burrow.state
 
-import chat.willow.kale.KaleObservable
+import chat.willow.kale.core.message.KaleObservable
 import chat.willow.kale.irc.message.rfc1459.PingMessage
 import chat.willow.kale.irc.message.rfc1459.PongMessage
 import io.reactivex.Observable
