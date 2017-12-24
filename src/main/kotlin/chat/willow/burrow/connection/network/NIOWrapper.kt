@@ -57,6 +57,7 @@ interface ISelectorFactory {
 interface INIOWrapper {
 
     fun setUp(address: InetSocketAddress)
+    fun tearDown()
     fun select(): MutableSet<ISelectionKeyWrapper>
     fun clearSelectedKeys()
     fun accept(key: SelectionKey): Pair<INetworkSocket, SelectionKey>
@@ -69,6 +70,7 @@ interface INIOWrapper {
 class NIOWrapper(private val selectorFactory: ISelectorFactory): INIOWrapper {
 
     private lateinit var selector: Selector
+    private var channel: ServerSocketChannel? = null
 
     override fun setUp(address: InetSocketAddress) {
         val channel = ServerSocketChannel.open()
@@ -79,6 +81,12 @@ class NIOWrapper(private val selectorFactory: ISelectorFactory): INIOWrapper {
         selector = selectorFactory.create()
         val ops = channel.validOps()
         channel.register(selector, ops)
+
+        this.channel = channel
+    }
+
+    override fun tearDown() {
+        channel?.close()
     }
 
     override fun select(): MutableSet<ISelectionKeyWrapper> {

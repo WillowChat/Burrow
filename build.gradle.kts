@@ -88,8 +88,39 @@ dependencies {
 
 test {
     testLogging.setEvents(listOf("passed", "skipped", "failed", "standardError"))
+
+    outputs.upToDateWhen { false }
 }
 
+task<Test>("unitTest") {
+    testLogging.setEvents(listOf("passed", "skipped", "failed", "standardError"))
+
+    filter {
+        includeTestsMatching("unit.*")
+    }
+
+    outputs.upToDateWhen { false }
+}
+
+task<Test>("functionalTest") {
+    testLogging.setEvents(listOf("passed", "skipped", "failed", "standardError"))
+
+    filter {
+        includeTestsMatching("functional.*")
+    }
+
+    outputs.upToDateWhen { false }
+}
+
+task<Test>("fuzzTest") {
+    testLogging.setEvents(listOf("passed", "skipped", "failed", "standardError"))
+
+    filter {
+        includeTestsMatching("fuzz.*")
+    }
+
+    outputs.upToDateWhen { false }
+}
 
 val buildNumberAddition = if(project.hasProperty("BUILD_NUMBER")) { ".${project.property("BUILD_NUMBER")}" } else { "" }
 val branchAddition = if(project.hasProperty("BRANCH")) {

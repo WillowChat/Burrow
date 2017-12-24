@@ -13,6 +13,8 @@ interface ISocketProcessor: Runnable {
     val read: Observable<SocketProcessor.Read>
     val accepted: Observable<SocketProcessor.Accepted>
     val closed: Observable<SocketProcessor.Closed>
+
+    fun tearDown()
 }
 
 class SocketProcessor(private val nioWrapper: INIOWrapper, val incomingBuffer: ByteBuffer, private val interruptedChecker: IInterruptedChecker): ISocketProcessor {
@@ -56,7 +58,12 @@ class SocketProcessor(private val nioWrapper: INIOWrapper, val incomingBuffer: B
             nioWrapper.clearSelectedKeys()
         }
 
+        nioWrapper.tearDown()
         LOGGER.info("thread interrupted, bailing out")
+    }
+
+    override fun tearDown() {
+        nioWrapper.tearDown()
     }
 
     private fun accept(key: ISelectionKeyWrapper) {

@@ -96,7 +96,7 @@ object Burrow {
             val MAX_LINE_LENGTH = BUFFER_SIZE
             val UTF_8: Charset = Charset.forName("UTF-8")
             val MAPPER = object : ICaseMapper {
-                override val current = CaseMapping.RFC1459
+                override val current = CaseMapping.STRICT_RFC1459
 
                 override fun toLower(string: String): String {
                     return current.toLower(string)
@@ -116,7 +116,14 @@ object Burrow {
             val socketProcessorThread = thread(name = "socket processor", start = false) { socketProcessor.run() }
 
             socketProcessorThread.start()
-            socketProcessorThread.join()
+
+            try {
+                socketProcessorThread.join()
+            } catch (execption: InterruptedException) {
+                LOGGER.info("Burrow stopping after being interrupted")
+            }
+
+            socketProcessor.tearDown()
         }
 
     }
