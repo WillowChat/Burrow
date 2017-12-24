@@ -1,8 +1,6 @@
-package chat.willow.burrow.unit.state
+package unit.chat.willow.burrow.state
 
-import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.state.*
-import chat.willow.burrow.unit.connection.network.MockConnectionTracker
 import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.utility.namedMap
 import chat.willow.kale.generated.KaleNumerics

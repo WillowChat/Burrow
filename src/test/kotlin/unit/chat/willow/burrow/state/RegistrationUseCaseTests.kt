@@ -1,11 +1,11 @@
-package chat.willow.burrow.unit.state
+package unit.chat.willow.burrow.state
 
 import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.connection.line.ILineAccumulator
 import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.connection.network.INetworkSocket
 import chat.willow.burrow.state.RegistrationUseCase
-import chat.willow.burrow.unit.connection.network.MockConnectionTracker
+import unit.chat.willow.burrow.connection.network.MockConnectionTracker
 import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.utility.mockKaleObservable
 import chat.willow.kale.IKale
@@ -17,7 +17,6 @@ import chat.willow.kale.irc.message.rfc1459.NickMessage
 import chat.willow.kale.irc.message.rfc1459.UserMessage
 import chat.willow.kale.irc.prefix.Prefix
 import com.nhaarman.mockito_kotlin.mock
-import com.nhaarman.mockito_kotlin.whenever
 import io.reactivex.observers.TestObserver
 import io.reactivex.schedulers.TestScheduler
 import io.reactivex.subjects.PublishSubject

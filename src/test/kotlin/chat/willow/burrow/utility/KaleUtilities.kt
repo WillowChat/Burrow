@@ -5,7 +5,7 @@ import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.connection.line.LineAccumulator
 import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.state.ClientTracker
-import chat.willow.burrow.unit.state.message
+import unit.chat.willow.burrow.state.message
 import chat.willow.kale.IKale
 import chat.willow.kale.core.message.KaleDescriptor
 import chat.willow.kale.helper.CaseInsensitiveNamedMap

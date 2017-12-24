@@ -1,4 +1,4 @@
-package chat.willow.burrow.unit.state
+package unit.chat.willow.burrow.state
 
 import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.connection.IConnectionTracker

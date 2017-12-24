@@ -1,4 +1,4 @@
-package chat.willow.burrow.unit.connection.network
+package unit.chat.willow.burrow.connection.network
 
 import chat.willow.burrow.Burrow
 import chat.willow.burrow.connection.BurrowConnection

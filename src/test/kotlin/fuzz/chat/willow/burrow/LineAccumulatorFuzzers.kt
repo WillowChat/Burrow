@@ -1,8 +1,7 @@
-package chat.willow.burrow.fuzz
+package fuzz.chat.willow.burrow
 
 import chat.willow.burrow.Burrow
 import chat.willow.burrow.connection.line.LineAccumulator
-import io.reactivex.subjects.PublishSubject
 import org.junit.Before
 import org.junit.Test
 import java.util.*

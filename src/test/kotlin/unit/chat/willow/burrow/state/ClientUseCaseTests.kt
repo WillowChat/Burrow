@@ -1,16 +1,13 @@
-package chat.willow.burrow.unit.state
+package unit.chat.willow.burrow.state
 
-import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.state.ClientTracker
 import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.state.ClientsUseCase
 import chat.willow.burrow.state.IClientsUseCase
-import chat.willow.burrow.unit.connection.network.MockConnectionTracker
+import unit.chat.willow.burrow.connection.network.MockConnectionTracker
 import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.irc.prefix.prefix
-import com.nhaarman.mockito_kotlin.mock
-import com.nhaarman.mockito_kotlin.verify
 import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.observers.TestObserver

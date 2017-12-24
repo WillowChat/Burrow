@@ -1,8 +1,6 @@
-package chat.willow.burrow.unit.state
+package unit.chat.willow.burrow.state
 
-import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.state.*
-import chat.willow.burrow.unit.connection.network.MockConnectionTracker
 import chat.willow.burrow.utility.makeClient
 import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.irc.CharacterCodes
@@ -11,9 +9,7 @@ import chat.willow.kale.irc.message.rfc1459.PartMessage
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl353Message
 import chat.willow.kale.irc.prefix.Prefix
 import chat.willow.kale.irc.prefix.prefix
-import com.nhaarman.mockito_kotlin.*
 import io.reactivex.observers.TestObserver
-import io.reactivex.subjects.PublishSubject
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
