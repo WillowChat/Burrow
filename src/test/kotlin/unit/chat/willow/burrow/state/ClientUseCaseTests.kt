@@ -5,7 +5,7 @@ import chat.willow.burrow.state.ClientTracker
 import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.state.ClientsUseCase
 import chat.willow.burrow.state.IClientsUseCase
-import unit.chat.willow.burrow.connection.network.MockConnectionTracker
+import unit.chat.willow.burrow.connection.MockConnectionTracker
 import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.irc.prefix.prefix
 import io.reactivex.Observable

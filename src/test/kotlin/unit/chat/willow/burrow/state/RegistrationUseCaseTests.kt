@@ -5,7 +5,7 @@ import chat.willow.burrow.connection.line.ILineAccumulator
 import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.connection.network.INetworkSocket
 import chat.willow.burrow.state.RegistrationUseCase
-import unit.chat.willow.burrow.connection.network.MockConnectionTracker
+import unit.chat.willow.burrow.connection.MockConnectionTracker
 import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.utility.mockKaleObservable
 import chat.willow.kale.IKale
