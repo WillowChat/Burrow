@@ -29,6 +29,9 @@ object Burrow {
         LOGGER.info("Starting...")
         LOGGER.info("Support the development of this daemon through Patreon https://crrt.io/patreon 🎉")
 
+        val hostname = args[0]
+        val port = args[1].toInt()
+
         val selectorFactory = SelectorFactory
         val nioWrapper = NIOWrapper(selectorFactory)
         val interruptedChecker = ThreadInterruptedChecker
@@ -54,7 +57,7 @@ object Burrow {
 
         val server = Server(nioWrapper, socketProcessor)
 
-        server.start()
+        server.start(hostname, port)
 
         LOGGER.info("Ended")
     }
@@ -108,8 +111,10 @@ object Burrow {
             }
         }
 
-        fun start() {
-            val socketAddress = InetSocketAddress("0.0.0.0", 6667)
+        fun start(hostname: String, port: Int) {
+            LOGGER.info("Binding to $hostname:$port...")
+
+            val socketAddress = InetSocketAddress(hostname, port)
 
             nioWrapper.setUp(socketAddress)
 

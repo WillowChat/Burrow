@@ -3,4 +3,4 @@ ARG jar
 WORKDIR /
 ADD $jar Burrow.jar
 EXPOSE 6667
-CMD java -jar Burrow.jar
+CMD java -jar Burrow.jar 0.0.0.0 6667
