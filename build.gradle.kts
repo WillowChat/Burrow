@@ -151,7 +151,6 @@ project.setProperty("archivesBaseName", projectTitle)
 
 shadowJar {
     mergeServiceFiles()
-    relocate("kotlin", "chat.willow.burrow.repack.kotlin")
     exclude("META-INF/*.DSA")
     exclude("META-INF/*.RSA")
 }
