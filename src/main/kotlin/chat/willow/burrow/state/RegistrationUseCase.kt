@@ -7,6 +7,7 @@ import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.IKale
 import chat.willow.kale.generated.KaleNumerics
+import chat.willow.kale.helper.INamed
 import chat.willow.kale.irc.message.extension.cap.CapMessage
 import chat.willow.kale.irc.message.rfc1459.NickMessage
 import chat.willow.kale.irc.message.rfc1459.UserMessage
@@ -24,7 +25,10 @@ interface IRegistrationUseCase {
 
 }
 
-class RegistrationUseCase(private val connections: IConnectionTracker, private val clients: IClientsUseCase, private val scheduler: Scheduler = Schedulers.computation()): IRegistrationUseCase {
+class RegistrationUseCase(private val connections: IConnectionTracker,
+                          private val clients: IClientsUseCase,
+                          private val serverName: INamed,
+                          private val scheduler: Scheduler = Schedulers.computation()): IRegistrationUseCase {
 
     private val LOGGER = loggerFor<RegistrationUseCase>()
 
@@ -64,7 +68,7 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
         val capReq = kale.observe(CapMessage.Req.Command.Descriptor).share()
 
         capLs
-                .map { CapMessage.Ls.Message(source = Prefix("bunnies."), target = "*", caps = caps, isMultiline = false) }
+                .map { CapMessage.Ls.Message(source = Prefix(serverName.name), target = "*", caps = caps, isMultiline = false) }
                 .subscribe { connections.send.onNext(connection.id to it) }
 
         val requestedSupportedCaps = capReq.flatMap {
@@ -88,10 +92,10 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
         }
 
         requestedSupportedCaps
-                .subscribe { connections.send.onNext(connection.id to CapMessage.Ack.Message(source = Prefix("bunnies."), target = "*", caps = it.toList())) }
+                .subscribe { connections.send.onNext(connection.id to CapMessage.Ack.Message(source = Prefix(serverName.name), target = "*", caps = it.toList())) }
 
         requestedUnsupportedCaps
-                .subscribe { connections.send.onNext(connection.id to CapMessage.Nak.Message(source = Prefix("bunnies."), target = "*", caps = it.toList())) }
+                .subscribe { connections.send.onNext(connection.id to CapMessage.Nak.Message(source = Prefix(serverName.name), target = "*", caps = it.toList())) }
 
         val negotiatedCaps = requestedSupportedCaps
                 .scan(setOf<String>(), { initial, addition -> initial + addition })
@@ -137,7 +141,7 @@ class RegistrationUseCase(private val connections: IConnectionTracker, private v
 
     private fun sendAlreadyExists(nickAndConnection: Pair<String, BurrowConnection>) {
         val (nick, connection) = nickAndConnection
-        val message = KaleNumerics.NICKNAMEINUSE.Message(source = "bunnies.", target = nick, content = "Nickname is already in use")
+        val message = KaleNumerics.NICKNAMEINUSE.Message(source = serverName.name, target = nick, content = "Nickname is already in use")
         connections.send.onNext(connection.id to message)
     }
 

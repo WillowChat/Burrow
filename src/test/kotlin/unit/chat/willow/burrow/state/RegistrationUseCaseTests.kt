@@ -22,6 +22,7 @@ import io.reactivex.schedulers.TestScheduler
 import io.reactivex.subjects.PublishSubject
 import org.junit.Before
 import org.junit.Test
+import unit.chat.willow.burrow.configuration.serverName
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
@@ -66,7 +67,7 @@ class RegistrationUseCaseTests {
 
         scheduler = TestScheduler()
 
-        sut = RegistrationUseCase(mockConnections, mockClients, scheduler)
+        sut = RegistrationUseCase(mockConnections, mockClients, serverName(), scheduler)
     }
 
     @Test fun `single USER and NICK results in registration without caps`() {
@@ -166,7 +167,7 @@ class RegistrationUseCaseTests {
         mockNick.onNext(NickMessage.Command("alreadyTakenNick"))
 
         observer.assertEmpty()
-        sends.assertValue(connection.id to KaleNumerics.NICKNAMEINUSE.Message(source = "bunnies.", target = "alreadyTakenNick", content = "Nickname is already in use"))
+        sends.assertValue(connection.id to KaleNumerics.NICKNAMEINUSE.Message(source = serverName().name, target = "alreadyTakenNick", content = "Nickname is already in use"))
     }
 
 }

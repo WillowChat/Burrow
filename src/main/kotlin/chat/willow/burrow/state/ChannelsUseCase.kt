@@ -30,7 +30,7 @@ data class ChannelUser(val prefix: Prefix): INamed {
         get() = prefix.nick
 }
 
-class ChannelsUseCase(val clients: IClientsUseCase): IChannelsUseCase {
+class ChannelsUseCase(val clients: IClientsUseCase, val serverName: INamed): IChannelsUseCase {
 
     private val LOGGER = loggerFor<ChannelsUseCase>()
     private val MAX_CHANNEL_LENGTH = 18 // todo: check
@@ -63,7 +63,7 @@ class ChannelsUseCase(val clients: IClientsUseCase): IChannelsUseCase {
     }
 
     private fun sendNoSuchChannel(channelName: String, client: ClientTracker.ConnectedClient) {
-        val noSuchChannelMessage = KaleNumerics.NOSUCHCHANNEL.Message(source = "bunnies.", target = client.name, channel = channelName, content = "No such channel")
+        val noSuchChannelMessage = KaleNumerics.NOSUCHCHANNEL.Message(source = serverName.name, target = client.name, channel = channelName, content = "No such channel")
         clients.send.onNext(client to noSuchChannelMessage)
     }
 
@@ -77,8 +77,8 @@ class ChannelsUseCase(val clients: IClientsUseCase): IChannelsUseCase {
         // todo: split message when there's too many users
         // todo: permissions for users - @ etc as a prefix
         val users = channel.users.all.values.map { it.prefix.nick }
-        val namReplyMessage = Rpl353Message.Message(source = "bunnies.", target = client.name, visibility = CharacterCodes.EQUALS.toString(), channel = channel.name, names = users)
-        val endOfNamesMessage = KaleNumerics.ENDOFNAMES.Message(source = "bunnies.", target = client.name, channel = channelName, content = "End of /NAMES list")
+        val namReplyMessage = Rpl353Message.Message(source = serverName.name, target = client.name, visibility = CharacterCodes.EQUALS.toString(), channel = channel.name, names = users)
+        val endOfNamesMessage = KaleNumerics.ENDOFNAMES.Message(source = serverName.name, target = client.name, channel = channelName, content = "End of /NAMES list")
 
         clients.send.onNext(client to namReplyMessage)
         clients.send.onNext(client to endOfNamesMessage)

@@ -1,5 +1,6 @@
 package chat.willow.burrow
 
+import chat.willow.burrow.configuration.BurrowConfig
 import chat.willow.burrow.connection.BurrowConnectionFactory
 import chat.willow.burrow.connection.ConnectionTracker
 import chat.willow.burrow.connection.network.*
@@ -29,8 +30,12 @@ object Burrow {
         LOGGER.info("Starting...")
         LOGGER.info("Support the development of this daemon through Patreon https://crrt.io/patreon 🎉")
 
-        val hostname = args[0]
-        val port = args[1].toInt()
+        if (!args.isEmpty()) {
+            LOGGER.warn("Configuration of Burrow is done by editing `burrow.yaml` (don't pass program arguments)")
+        }
+
+        LOGGER.info("Loading configuration...")
+        val config = BurrowConfig()
 
         val selectorFactory = SelectorFactory
         val nioWrapper = NIOWrapper(selectorFactory)
@@ -40,8 +45,8 @@ object Burrow {
         val socketProcessor = SocketProcessor(nioWrapper, buffer, interruptedChecker)
         val connectionTracker = ConnectionTracker(socketProcessor, bufferSize = Server.MAX_LINE_LENGTH, connectionFactory = BurrowConnectionFactory)
         val kale = createKale(KaleRouter(), KaleMetadataFactory(KaleTagRouter()))
-        val clientUseCase = ClientsUseCase(connectionTracker)
-        val registrationUseCase = RegistrationUseCase(connectionTracker, clientUseCase)
+        val clientUseCase = ClientsUseCase(connectionTracker, config.server)
+        val registrationUseCase = RegistrationUseCase(connectionTracker, clientUseCase, config.server)
 
         val supportedCaps = mapOf<String, String?>("cap-notify" to null)
         val clientTracker = ClientTracker(connections = connectionTracker, registrationUseCase = registrationUseCase, supportedCaps = supportedCaps, clientsUseCase = clientUseCase)
@@ -57,7 +62,7 @@ object Burrow {
 
         val server = Server(nioWrapper, socketProcessor)
 
-        server.start(hostname, port)
+        server.start(config.server.host, config.server.port)
 
         LOGGER.info("Ended")
     }

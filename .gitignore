@@ -32,3 +32,5 @@ out
 
 # Certificates
 *.pem
+
+run

@@ -20,15 +20,15 @@ class BurrowExternalResource: ExternalResource() {
         burrow = Burrow
 
         burrowThread = thread(start = true) {
-            burrow.main(arrayOf("localhost", "6789"))
+            burrow.main(arrayOf())
         }
     }
 
     override fun after() {
         burrowThread.interrupt()
-        burrowThread.join(1000)
+        burrowThread.join(2000)
         if (burrowThread.isAlive) {
-            throw IllegalStateException("Burrow did not shut down correctly (waited 1 second)")
+            throw IllegalStateException("Burrow did not shut down correctly (waited 2 seconds)")
         }
 
         super.after()
@@ -38,7 +38,7 @@ class BurrowExternalResource: ExternalResource() {
 
     fun socket(): BurrowTestSocket {
         var socket: Socket? = null
-        retry@for (i in 0..10) {
+        retry@for (i in 0..30) {
             try {
                 socket = Socket("localhost", 6789)
                 break@retry

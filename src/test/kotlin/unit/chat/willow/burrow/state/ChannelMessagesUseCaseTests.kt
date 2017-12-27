@@ -11,6 +11,7 @@ import com.nhaarman.mockito_kotlin.*
 import io.reactivex.observers.TestObserver
 import org.junit.Before
 import org.junit.Test
+import unit.chat.willow.burrow.configuration.serverName
 
 class ChannelMessagesUseCaseTests {
 
@@ -31,7 +32,7 @@ class ChannelMessagesUseCaseTests {
 
         sends = mockClients.sendSubject.test()
 
-        sut = ChannelMessagesUseCase(mockChannels, mockClients)
+        sut = ChannelMessagesUseCase(mockChannels, mockClients, serverName())
     }
 
     @Test fun `when a client sends a message to a channel with an invalid name, send an error back`() {
@@ -42,7 +43,7 @@ class ChannelMessagesUseCaseTests {
 
         privMsgs.onNext(PrivMsgMessage.Command(target = "not_valid", message = "something"))
 
-        sends.assertValue(testClientOne.client to KaleNumerics.CANNOTSENDTOCHAN.Message(source = "bunnies.", target = "someone", channel = "not_valid", content = "Invalid channel name"))
+        sends.assertValue(testClientOne.client to KaleNumerics.CANNOTSENDTOCHAN.Message(source = serverName().name, target = "someone", channel = "not_valid", content = "Invalid channel name"))
     }
 
     @Test fun `when a client sends a message to a nonexistent channel, send an error back`() {
@@ -53,7 +54,7 @@ class ChannelMessagesUseCaseTests {
 
         privMsgs.onNext(PrivMsgMessage.Command(target = "#somewhere", message = "something"))
 
-        sends.assertValue(testClientOne.client to KaleNumerics.CANNOTSENDTOCHAN.Message(source = "bunnies.", target = "someone", channel = "#somewhere", content = "Channel doesn't exist"))
+        sends.assertValue(testClientOne.client to KaleNumerics.CANNOTSENDTOCHAN.Message(source = serverName().name, target = "someone", channel = "#somewhere", content = "Channel doesn't exist"))
     }
 
     @Test fun `when a client sends a message to a channel they aren't in, send an error back`() {
@@ -65,7 +66,7 @@ class ChannelMessagesUseCaseTests {
 
         privMsgs.onNext(PrivMsgMessage.Command(target = "#somewhere", message = "something"))
 
-        sends.assertValue(testClientOne.client to KaleNumerics.CANNOTSENDTOCHAN.Message(source = "bunnies.", target = "someone", channel = "#somewhere", content = "You're not in that channel"))
+        sends.assertValue(testClientOne.client to KaleNumerics.CANNOTSENDTOCHAN.Message(source = serverName().name, target = "someone", channel = "#somewhere", content = "You're not in that channel"))
     }
 
     @Test fun `when a client sends an invalid message to a channel, send an error back`() {
@@ -77,7 +78,7 @@ class ChannelMessagesUseCaseTests {
 
         privMsgs.onNext(PrivMsgMessage.Command(target = "#somewhere", message = ""))
 
-        sends.assertValue(testClientOne.client to KaleNumerics.CANNOTSENDTOCHAN.Message(source = "bunnies.", target = "someone", channel = "#somewhere", content = "That message was invalid"))
+        sends.assertValue(testClientOne.client to KaleNumerics.CANNOTSENDTOCHAN.Message(source = serverName().name, target = "someone", channel = "#somewhere", content = "That message was invalid"))
     }
 
     @Test fun `when a client sends an valid message to a valid channel, send the message to other clients in the channel`() {

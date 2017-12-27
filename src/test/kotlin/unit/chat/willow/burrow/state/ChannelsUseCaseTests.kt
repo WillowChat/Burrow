@@ -13,6 +13,7 @@ import io.reactivex.observers.TestObserver
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import unit.chat.willow.burrow.configuration.serverName
 
 class ChannelsUseCaseTests {
 
@@ -27,7 +28,7 @@ class ChannelsUseCaseTests {
 
         sends = mockClients.sendSubject.test()
 
-        sut = ChannelsUseCase(mockClients)
+        sut = ChannelsUseCase(mockClients, serverName())
     }
 
     @Test fun `when a client sends a JOIN message, with a valid channel name, reply with a JOIN`() {
@@ -47,7 +48,7 @@ class ChannelsUseCaseTests {
 
         joins.onNext(JoinMessage.Command(channels = listOf("#somewhere!")))
 
-        val message = KaleNumerics.NOSUCHCHANNEL.Message(source = "bunnies.", target = "someone", channel = "#somewhere!", content = "No such channel")
+        val message = KaleNumerics.NOSUCHCHANNEL.Message(source = serverName().name, target = "someone", channel = "#somewhere!", content = "No such channel")
         sends.assertValue(testClient.client to message)
     }
 
@@ -59,7 +60,7 @@ class ChannelsUseCaseTests {
         joins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
 
         val names = listOf("someone")
-        val message = Rpl353Message.Message(source = "bunnies.", target = "someone", visibility = CharacterCodes.EQUALS.toString(), channel = "#somewhere", names = names)
+        val message = Rpl353Message.Message(source = serverName().name, target = "someone", visibility = CharacterCodes.EQUALS.toString(), channel = "#somewhere", names = names)
         sends.assertValueAt(1, testClient.client to message)
     }
 
@@ -79,8 +80,8 @@ class ChannelsUseCaseTests {
         clientTwoJoins.onNext(JoinMessage.Command(channels = listOf("#somewhere")))
 
         val names = listOf("someone", "someone_else")
-        val namReplyMessage = Rpl353Message.Message(source = "bunnies.", target = "someone_else", visibility = CharacterCodes.EQUALS.toString(), channel = "#somewhere", names = names)
-        val endOfNamesMessage = KaleNumerics.ENDOFNAMES.Message(source = "bunnies.", target = "someone_else", channel = "#somewhere", content = "End of /NAMES list")
+        val namReplyMessage = Rpl353Message.Message(source = serverName().name, target = "someone_else", visibility = CharacterCodes.EQUALS.toString(), channel = "#somewhere", names = names)
+        val endOfNamesMessage = KaleNumerics.ENDOFNAMES.Message(source = serverName().name, target = "someone_else", channel = "#somewhere", content = "End of /NAMES list")
 
         sends.assertValueAt(4, (testClientTwo.client to namReplyMessage))
         sends.assertValueAt(5, (testClientTwo.client to endOfNamesMessage))

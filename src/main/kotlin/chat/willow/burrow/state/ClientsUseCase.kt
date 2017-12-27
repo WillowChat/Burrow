@@ -6,6 +6,7 @@ import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.helper.CaseInsensitiveNamedMap
+import chat.willow.kale.helper.INamed
 import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.subjects.PublishSubject
@@ -21,7 +22,7 @@ interface IClientsUseCase {
 
 }
 
-class ClientsUseCase(connections: IConnectionTracker): IClientsUseCase {
+class ClientsUseCase(connections: IConnectionTracker, val serverName: INamed): IClientsUseCase {
 
     private val LOGGER = loggerFor<ClientsUseCase>()
 
@@ -30,9 +31,9 @@ class ClientsUseCase(connections: IConnectionTracker): IClientsUseCase {
     override val dropped = PublishSubject.create<ClientTracker.ConnectedClient>()
     override val send = PublishSubject.create<Pair<ClientTracker.ConnectedClient, Any>>()
 
-    private val channels = ChannelsUseCase(this)
+    private val channels = ChannelsUseCase(this, serverName)
     private val ping = PingUseCase(this)
-    private val channelMessages = ChannelMessagesUseCase(channels, this)
+    private val channelMessages = ChannelMessagesUseCase(channels, this, serverName)
 
     private val clients = CaseInsensitiveNamedMap<ClientTracker.ConnectedClient>(mapper = Burrow.Server.MAPPER)
 
@@ -45,7 +46,7 @@ class ClientsUseCase(connections: IConnectionTracker): IClientsUseCase {
     }
 
     private fun track(client: ClientTracker.ConnectedClient) {
-        send.onNext(client to KaleNumerics.WELCOME.Message(source = "bunnies.", target = client.prefix.nick, content = "welcome to burrow"))
+        send.onNext(client to KaleNumerics.WELCOME.Message(source = serverName.name, target = client.prefix.nick, content = "welcome to burrow"))
 
         ping.track(client)
         channels.track(client)

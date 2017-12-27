@@ -15,6 +15,7 @@ import io.reactivex.subjects.PublishSubject
 import org.junit.Before
 import org.junit.Test
 import org.junit.Assert.*
+import unit.chat.willow.burrow.configuration.serverName
 
 class ClientUseCaseTests {
 
@@ -28,7 +29,7 @@ class ClientUseCaseTests {
 
         sends = mockConnections.sendSubject.test()
 
-        sut = ClientsUseCase(mockConnections)
+        sut = ClientsUseCase(mockConnections, serverName())
     }
 
     @Test fun `when a client is tracked, they're sent an MOTD`() {
@@ -36,7 +37,7 @@ class ClientUseCaseTests {
 
         sut.track.onNext(client)
 
-        sends.assertValue(1 to KaleNumerics.WELCOME.Message(source = "bunnies.", target = "someone", content = "welcome to burrow"))
+        sends.assertValue(1 to KaleNumerics.WELCOME.Message(source = serverName().name, target = "someone", content = "welcome to burrow"))
     }
 
     @Test fun `after tracking a client, we can look them up by username`() {

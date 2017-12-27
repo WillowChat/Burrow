@@ -3,6 +3,7 @@ package chat.willow.burrow.state
 import chat.willow.burrow.Burrow
 import chat.willow.kale.core.message.KaleObservable
 import chat.willow.kale.generated.KaleNumerics
+import chat.willow.kale.helper.INamed
 import chat.willow.kale.irc.message.rfc1459.PrivMsgMessage
 
 interface IChannelMessagesUseCase {
@@ -11,7 +12,7 @@ interface IChannelMessagesUseCase {
 
 }
 
-class ChannelMessagesUseCase(private val channels: IChannelsUseCase, private val clients: IClientsUseCase): IChannelMessagesUseCase {
+class ChannelMessagesUseCase(private val channels: IChannelsUseCase, private val clients: IClientsUseCase, private val serverName: INamed): IChannelMessagesUseCase {
 
     override fun track(client: ClientTracker.ConnectedClient) {
         client.kale
@@ -35,7 +36,7 @@ class ChannelMessagesUseCase(private val channels: IChannelsUseCase, private val
     }
 
     private fun sendCannotSendToChan(client: ClientTracker.ConnectedClient, channelName: String, message: String) {
-        val messageToSend = KaleNumerics.CANNOTSENDTOCHAN.Message(source = "bunnies.", target = client.name, channel = channelName, content = message)
+        val messageToSend = KaleNumerics.CANNOTSENDTOCHAN.Message(source = serverName.name, target = client.name, channel = channelName, content = message)
         clients.send.onNext(client to messageToSend)
     }
 

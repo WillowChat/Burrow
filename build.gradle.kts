@@ -79,6 +79,10 @@ dependencies {
     implementation("io.reactivex.rxjava2:rxjava:2.1.6")
     implementation("io.reactivex.rxjava2:rxkotlin:2.1.0")
 
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.9.3")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.3")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.9.3")
+
     runtime("org.slf4j:slf4j-simple:1.7.21")
 
     testImplementation("junit:junit:4.12")
@@ -90,6 +94,8 @@ test {
     testLogging.setEvents(listOf("passed", "skipped", "failed", "standardError"))
 
     outputs.upToDateWhen { false }
+
+    workingDir = File("testRun")
 }
 
 task<Test>("unitTest") {
@@ -110,6 +116,8 @@ task<Test>("functionalTest") {
     }
 
     outputs.upToDateWhen { false }
+
+    workingDir = File("testRun")
 }
 
 task<Test>("fuzzTest") {

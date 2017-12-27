@@ -1,0 +1,8 @@
+network:
+  name: "Burrow"
+
+server:
+  name: "🐰"
+  host: "0.0.0.0"
+  port: 6667
+  motd: motd.yaml
