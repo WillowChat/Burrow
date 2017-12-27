@@ -43,7 +43,7 @@ class BurrowExternalResource: ExternalResource() {
                 socket = Socket("localhost", 6789)
                 break@retry
             } catch (exception: IOException) {
-                Thread.sleep(50)
+                Thread.sleep(100)
             }
         }
 
