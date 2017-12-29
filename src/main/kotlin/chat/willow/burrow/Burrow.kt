@@ -45,7 +45,7 @@ object Burrow {
         val socketProcessor = SocketProcessor(nioWrapper, buffer, interruptedChecker)
         val connectionTracker = ConnectionTracker(socketProcessor, bufferSize = Server.MAX_LINE_LENGTH, connectionFactory = BurrowConnectionFactory)
         val kale = createKale(KaleRouter(), KaleMetadataFactory(KaleTagRouter()))
-        val clientUseCase = ClientsUseCase(connectionTracker, config.server)
+        val clientUseCase = ClientsUseCase(connectionTracker, config.server, config.network)
         val registrationUseCase = RegistrationUseCase(connectionTracker, clientUseCase, config.server)
 
         val supportedCaps = mapOf<String, String?>("cap-notify" to null)

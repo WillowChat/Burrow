@@ -22,7 +22,7 @@ interface IClientsUseCase {
 
 }
 
-class ClientsUseCase(connections: IConnectionTracker, val serverName: INamed): IClientsUseCase {
+class ClientsUseCase(connections: IConnectionTracker, val serverName: INamed, val networkName: INamed): IClientsUseCase {
 
     private val LOGGER = loggerFor<ClientsUseCase>()
 
@@ -46,7 +46,8 @@ class ClientsUseCase(connections: IConnectionTracker, val serverName: INamed): I
     }
 
     private fun track(client: ClientTracker.ConnectedClient) {
-        send.onNext(client to KaleNumerics.WELCOME.Message(source = serverName.name, target = client.prefix.nick, content = "welcome to burrow"))
+        val message = "Welcome to ${networkName.name}"
+        send.onNext(client to KaleNumerics.WELCOME.Message(source = serverName.name, target = client.prefix.nick, content = message))
 
         ping.track(client)
         channels.track(client)
