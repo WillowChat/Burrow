@@ -1,19 +1,10 @@
 package unit.chat.willow.burrow.connection
 
 import chat.willow.burrow.Burrow
-import chat.willow.burrow.connection.BurrowConnection
-import chat.willow.burrow.connection.line.ILineAccumulator
-import chat.willow.burrow.connection.ConnectionTracker
-import chat.willow.burrow.connection.IBurrowConnectionFactory
-import chat.willow.burrow.connection.IConnectionTracker
-import chat.willow.burrow.connection.line.LineAccumulator
-import chat.willow.burrow.connection.network.ConnectionId
-import chat.willow.burrow.connection.network.INetworkSocket
-import chat.willow.burrow.connection.network.ISocketProcessor
-import chat.willow.burrow.connection.network.SocketProcessor
+import chat.willow.burrow.connection.*
+import chat.willow.burrow.connection.listeners.IConnectionListening
 import chat.willow.kale.IKale
 import chat.willow.kale.core.message.IrcMessage
-import com.nhaarman.mockito_kotlin.any
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.verify
 import com.nhaarman.mockito_kotlin.whenever
@@ -21,79 +12,56 @@ import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.schedulers.TestScheduler
 import io.reactivex.subjects.PublishSubject
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
-import java.nio.ByteBuffer
+import unit.chat.willow.burrow.connection.listeners.MockConnectionListening
+import unit.chat.willow.burrow.connection.listeners.preparing.MockConnectionPreparing
 
 class ConnectionTrackerTests {
 
     lateinit var sut: ConnectionTracker
 
-    lateinit var mockSocketProcessor: ISocketProcessor
+    lateinit var mockConnectionListening: IConnectionListening
     lateinit var mockKale: IKale
-    lateinit var mockConnectionFactory: IBurrowConnectionFactory
 
-    lateinit var accepted: PublishSubject<SocketProcessor.Accepted>
-    lateinit var read: PublishSubject<SocketProcessor.Read>
-    lateinit var closed: PublishSubject<SocketProcessor.Closed>
+    lateinit var preparer: MockConnectionPreparing
+    lateinit var listener: MockConnectionListening
 
     lateinit var scheduler: TestScheduler
 
     @Before fun setUp() {
-        mockSocketProcessor = mock()
+        mockConnectionListening = mock()
         mockKale = mock()
-        mockConnectionFactory = mock()
 
         scheduler = TestScheduler()
 
-        accepted = PublishSubject.create<SocketProcessor.Accepted>()
-        whenever(mockSocketProcessor.accepted).thenReturn(accepted)
+        preparer = MockConnectionPreparing()
+        listener = MockConnectionListening(preparer)
 
-        read = PublishSubject.create<SocketProcessor.Read>()
-        whenever(mockSocketProcessor.read).thenReturn(read)
-
-        closed = PublishSubject.create<SocketProcessor.Closed>()
-        whenever(mockSocketProcessor.closed).thenReturn(closed)
-
-        sut = ConnectionTracker(mockSocketProcessor, bufferSize = 10, kale = mockKale, connectionFactory = mockConnectionFactory, socketScheduler = scheduler)
-    }
-
-    @Test fun `when socket processor accepts a socket, tracker tracks connection`() {
-        val socket: INetworkSocket = mock()
-        whenever(socket.host).thenReturn("somewhere")
-
-        val accumulator: ILineAccumulator = mock()
-        val connection = BurrowConnection(id = 1, host = "somewhere", socket = socket, accumulator = accumulator)
-        whenever(mockConnectionFactory.create(any(), any(), any(), any())).thenReturn(connection)
-
-        val observer = sut.tracked.test()
-        accepted.onNext(SocketProcessor.Accepted(1, socket))
-
-        val expected = ConnectionTracker.Tracked(connection)
-        observer.assertValue(expected)
+        sut = ConnectionTracker(kale = mockKale, socketScheduler = scheduler)
+        sut.addConnectionListener(listener)
     }
 
     @Test fun `after tracking a connection, it is gettable`() {
-        val socket: INetworkSocket = mock()
+        val socket: IPrimitiveConnection = mock()
         whenever(socket.host).thenReturn("somewhere")
 
-        val accumulator: ILineAccumulator = mock()
-        val connection = BurrowConnection(id = 1, host = "somewhere", socket = socket, accumulator = accumulator)
-        whenever(mockConnectionFactory.create(any(), any(), any(), any())).thenReturn(connection)
-        accepted.onNext(SocketProcessor.Accepted(1, socket))
+        val connection = BurrowConnection(id = 1, primitiveConnection = socket)
+
+        listener.acceptedSubject.onNext(IConnectionListening.Accepted(1, socket))
+        preparer.spyConnections[1] = connection
 
         assertEquals(connection, sut.get(id = 1))
     }
 
     @Test fun `after tracking a connection, and sending something to it, the socket is written to`() {
-        val socket = mock<INetworkSocket>()
+        val socket = mock<IPrimitiveConnection>()
         whenever(socket.host).thenReturn("somewhere")
+        val connection = BurrowConnection(id = 1, primitiveConnection = socket)
 
-        val accumulator: ILineAccumulator = mock()
-        val connection = BurrowConnection(id = 1, host = "somewhere", socket = socket, accumulator = accumulator)
-        whenever(mockConnectionFactory.create(any(), any(), any(), any())).thenReturn(connection)
-        accepted.onNext(SocketProcessor.Accepted(1, socket))
+        listener.acceptedSubject.onNext(IConnectionListening.Accepted(1, socket))
+        preparer.spyConnections[1] = connection
 
         val line = "SOME message"
         whenever(mockKale.serialise(line)).thenReturn(IrcMessage(command = "SOME", parameters = listOf("message")))
@@ -104,26 +72,10 @@ class ConnectionTrackerTests {
         verify(socket).write(expectedSocketWrite)
     }
 
-    @Test fun `when socket processor reads, the connection's accumulator is given the data`() {
-        val socket: INetworkSocket = mock()
-        whenever(socket.host).thenReturn("somewhere")
-
-        val accumulator = LineAccumulator(bufferSize = 10)
-        val connection = BurrowConnection(id = 1, host = "", socket = socket, accumulator = accumulator)
-        whenever(mockConnectionFactory.create(any(), any(), any(), any())).thenReturn(connection)
-        accepted.onNext(SocketProcessor.Accepted(id = 1, socket = socket))
-
-        val observer = accumulator.input.test()
-        val buffer = ByteBuffer.allocate(10)
-        read.onNext(SocketProcessor.Read(id = 1, buffer = buffer, bytes = 8))
-
-        observer.assertValue(LineAccumulator.Input(buffer.array(), read = 8))
-    }
-
     @Test fun `when socket processor closes a socket, we always say that we dropped it`() {
         val observer = sut.dropped.test()
 
-        closed.onNext(SocketProcessor.Closed(id = 1))
+        listener.closedSubject.onNext(IConnectionListening.Closed(id = 1))
 
         observer.assertValue(ConnectionTracker.Dropped(id = 1))
     }
@@ -153,11 +105,21 @@ class MockConnectionTracker: IConnectionTracker {
     override val send: Observer<Pair<ConnectionId, Any>>
     val sendSubject = PublishSubject.create<Pair<ConnectionId, Any>>()
 
+    override val read: Observable<Pair<ConnectionId, String>>
+    val readSubject = PublishSubject.create<Pair<ConnectionId, String>>()
+
     init {
         tracked = trackedSubject
         dropped = droppedSubject
         drop = dropSubject
         send = sendSubject
+        read = readSubject
     }
 
+    var didAddConnectionListener = false
+    lateinit var spyListener: IConnectionListening
+    override fun addConnectionListener(listener: IConnectionListening) {
+        didAddConnectionListener = true
+        spyListener = listener
+    }
 }

@@ -1,5 +1,7 @@
 package chat.willow.burrow.connection.network
 
+import chat.willow.burrow.connection.ConnectionId
+import chat.willow.burrow.connection.IPrimitiveConnection
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
@@ -8,13 +10,10 @@ import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 
-class NIOSocketChannelWrapper(private val internalSocket: SocketChannel): INetworkSocket {
+open class NIOPrimitiveConnection(private val internalSocket: SocketChannel):
+    IPrimitiveConnection {
 
-    override val isConnected: Boolean
-        get() = internalSocket.isConnected
-
-    override val host: String
-        get() = internalSocket.socket().inetAddress.canonicalHostName
+    override var host: String = internalSocket.socket().inetAddress.canonicalHostName
 
     override fun close() {
         internalSocket.close()
@@ -23,6 +22,7 @@ class NIOSocketChannelWrapper(private val internalSocket: SocketChannel): INetwo
     override fun write(bytes: ByteBuffer) {
         internalSocket.write(bytes)
     }
+
 }
 
 interface ISelectionKeyWrapper {
@@ -60,7 +60,7 @@ interface INIOWrapper {
     fun tearDown()
     fun select(): MutableSet<ISelectionKeyWrapper>
     fun clearSelectedKeys()
-    fun accept(key: SelectionKey): Pair<INetworkSocket, SelectionKey>
+    fun accept(key: SelectionKey): Pair<IPrimitiveConnection, SelectionKey>
     fun attach(id: ConnectionId, key: SelectionKey)
     fun read(key: SelectionKey, buffer: ByteBuffer): Pair<Int, ConnectionId>
     fun close(key: SelectionKey)
@@ -102,14 +102,14 @@ class NIOWrapper(private val selectorFactory: ISelectorFactory): INIOWrapper {
         selector.selectedKeys().clear()
     }
 
-    override fun accept(key: SelectionKey): Pair<INetworkSocket, SelectionKey> {
+    override fun accept(key: SelectionKey): Pair<IPrimitiveConnection, SelectionKey> {
         val channel = key.channel() as ServerSocketChannel
         val socket = channel.accept()
         socket.configureBlocking(false)
 
         val clientKey = socket.register(selector, SelectionKey.OP_READ)
 
-        return NIOSocketChannelWrapper(socket) to clientKey
+        return NIOPrimitiveConnection(socket) to clientKey
     }
 
     override fun attach(id: ConnectionId, key: SelectionKey) {

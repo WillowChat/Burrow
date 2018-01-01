@@ -1,6 +1,7 @@
 package unit.chat.willow.burrow.state
 
-import chat.willow.burrow.state.*
+import chat.willow.burrow.state.ChannelsUseCase
+import chat.willow.burrow.state.ClientTracker
 import chat.willow.burrow.utility.makeClient
 import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.irc.CharacterCodes

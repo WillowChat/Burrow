@@ -1,12 +1,21 @@
 package chat.willow.burrow
 
 import chat.willow.burrow.configuration.BurrowConfig
+import chat.willow.burrow.configuration.ListenerConfig
 import chat.willow.burrow.connection.BurrowConnectionFactory
+import chat.willow.burrow.connection.ConnectionIdProvider
 import chat.willow.burrow.connection.ConnectionTracker
-import chat.willow.burrow.connection.network.*
+import chat.willow.burrow.connection.listeners.IConnectionListening
+import chat.willow.burrow.connection.listeners.NIOSocketListener
+import chat.willow.burrow.connection.listeners.preparing.HaproxyConnectionPreparing
+import chat.willow.burrow.connection.listeners.preparing.PlainConnectionPreparing
+import chat.willow.burrow.connection.network.NIOWrapper
+import chat.willow.burrow.connection.network.SelectorFactory
 import chat.willow.burrow.helper.ThreadInterruptedChecker
 import chat.willow.burrow.helper.loggerFor
-import chat.willow.burrow.state.*
+import chat.willow.burrow.state.ClientTracker
+import chat.willow.burrow.state.ClientsUseCase
+import chat.willow.burrow.state.RegistrationUseCase
 import chat.willow.kale.*
 import chat.willow.kale.core.tag.KaleTagRouter
 import chat.willow.kale.generated.KaleNumerics
@@ -16,11 +25,9 @@ import chat.willow.kale.irc.message.extension.cap.CapMessage
 import chat.willow.kale.irc.message.rfc1459.*
 import chat.willow.kale.irc.message.rfc1459.rpl.Rpl353Message
 import chat.willow.kale.irc.message.utility.RawMessage
-import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.util.regex.Pattern
-import kotlin.concurrent.thread
 
 object Burrow {
 
@@ -37,13 +44,21 @@ object Burrow {
         LOGGER.info("Loading configuration...")
         val config = BurrowConfig()
 
-        val selectorFactory = SelectorFactory
-        val nioWrapper = NIOWrapper(selectorFactory)
-        val interruptedChecker = ThreadInterruptedChecker
+        val listeners = config.server.listen.map {
+            when (it.type) {
+                ListenerConfig.Type.PLAINTEXT -> createPlaintextListener(it.host, it.port)
+                ListenerConfig.Type.HAPROXY_V2 -> createHaproxyListener(it.host, it.port)
+            }
+        }
 
-        val buffer = ByteBuffer.allocate(Server.MAX_LINE_LENGTH)
-        val socketProcessor = SocketProcessor(nioWrapper, buffer, interruptedChecker)
-        val connectionTracker = ConnectionTracker(socketProcessor, bufferSize = Server.MAX_LINE_LENGTH, connectionFactory = BurrowConnectionFactory)
+        if (listeners.isEmpty()) {
+            LOGGER.error("You must configure at least one listener")
+            return
+        }
+
+        val connectionTracker = ConnectionTracker()
+        listeners.forEach(connectionTracker::addConnectionListener)
+
         val kale = createKale(KaleRouter(), KaleMetadataFactory(KaleTagRouter()))
         val clientUseCase = ClientsUseCase(connectionTracker, config.server, config.network)
         val registrationUseCase = RegistrationUseCase(connectionTracker, clientUseCase, config.server)
@@ -60,11 +75,55 @@ object Burrow {
                 .map { it.id }
                 .subscribe(clientTracker.drop)
 
-        val server = Server(nioWrapper, socketProcessor)
+        val server = Server(listeners)
 
-        server.start(config.server.host, config.server.port)
+        server.start()
+
+        listeners.forEach(IConnectionListening::tearDown)
 
         LOGGER.info("Ended")
+    }
+
+    private fun createHaproxyListener(host: String, port: Int): IConnectionListening {
+        val selectorFactory = SelectorFactory
+        val nioWrapper = NIOWrapper(selectorFactory)
+        val interruptedChecker = ThreadInterruptedChecker
+
+        val buffer = ByteBuffer.allocate(Server.MAX_LINE_LENGTH)
+
+        val haproxyPreparing =
+            HaproxyConnectionPreparing(BurrowConnectionFactory)
+
+        return NIOSocketListener(
+            host,
+            port,
+            nioWrapper,
+            buffer,
+            interruptedChecker,
+            ConnectionIdProvider,
+            haproxyPreparing
+        )
+    }
+
+    private fun createPlaintextListener(host: String, port: Int): IConnectionListening {
+        val selectorFactory = SelectorFactory
+        val nioWrapper = NIOWrapper(selectorFactory)
+        val interruptedChecker = ThreadInterruptedChecker
+
+        val buffer = ByteBuffer.allocate(Server.MAX_LINE_LENGTH)
+
+        val plainPreparing =
+            PlainConnectionPreparing(BurrowConnectionFactory)
+
+        return NIOSocketListener(
+            host,
+            port,
+            nioWrapper,
+            buffer,
+            interruptedChecker,
+            ConnectionIdProvider,
+            plainPreparing
+        )
     }
 
     fun createKale(router: IKaleRouter, metadataFactory: IKaleMetadataFactory): IKale {
@@ -84,7 +143,6 @@ object Burrow {
         router.register(CapMessage.Ack.Message::class, CapMessage.Ack.Message.Serialiser)
         router.register(CapMessage.Nak.Message::class, CapMessage.Nak.Message.Serialiser)
 
-
         router.register(RawMessage.Line::class, RawMessage.Line.Serialiser)
 
         return Kale(router, metadataFactory)
@@ -96,8 +154,7 @@ object Burrow {
         val channel = Pattern.compile("^#[a-zA-Z0-9_]+$").asPredicate()
     }
 
-    class Server(private val nioWrapper: INIOWrapper,
-                 private val socketProcessor: ISocketProcessor) {
+    class Server(private val listeners: List<IConnectionListening>) {
 
         companion object {
             val BUFFER_SIZE = 8192
@@ -116,24 +173,27 @@ object Burrow {
             }
         }
 
-        fun start(hostname: String, port: Int) {
-            LOGGER.info("Binding to $hostname:$port...")
+        fun start() {
+            LOGGER.info("Starting listeners...")
 
-            val socketAddress = InetSocketAddress(hostname, port)
-
-            nioWrapper.setUp(socketAddress)
-
-            val socketProcessorThread = thread(name = "socket processor", start = false) { socketProcessor.run() }
-
-            socketProcessorThread.start()
-
-            try {
-                socketProcessorThread.join()
-            } catch (execption: InterruptedException) {
-                LOGGER.info("Burrow stopping after being interrupted")
+            listeners.forEach {
+                it.start()
             }
 
-            socketProcessor.tearDown()
+            runloop@while (!Thread.currentThread().isInterrupted) {
+                try {
+                    // todo: better way to wait for interruption?
+                    Thread.sleep(100)
+                } catch (exception: Exception) {
+                    LOGGER.info("Burrow stopping after being interrupted")
+                    break@runloop
+                }
+            }
+
+            listeners.forEach {
+                LOGGER.info("Tearing down listener: $it")
+                it.tearDown()
+            }
         }
 
     }

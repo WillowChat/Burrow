@@ -1,6 +1,7 @@
 package chat.willow.burrow.connection.line
 
 import chat.willow.burrow.Burrow
+import chat.willow.burrow.helper.loggerFor
 import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.rxkotlin.toObservable
@@ -11,29 +12,38 @@ val NEW_LINE_BYTE = '\n'.toByte()
 val CARRIAGE_RETURN_BYTE = '\r'.toByte()
 
 interface ILineAccumulator {
-    val input: Observer<LineAccumulator.Input>
+    val input: Observer<Input>
     val lines: Observable<String>
+
+    data class Input(val bytes: ByteArray, val bytesRead: Int)
 }
 
 class LineAccumulator(private val bufferSize: Int): ILineAccumulator {
 
-    private val buffer: ByteBuffer = ByteBuffer.allocate(bufferSize)
-    override val lines: Observable<String>
+    private val LOGGER = loggerFor<LineAccumulator>()
 
-    data class Input(val bytes: ByteArray, val read: Int)
-    override val input = PublishSubject.create<Input>()
+    private val buffer: ByteBuffer = ByteBuffer.allocate(bufferSize)
+
+    override val lines = PublishSubject.create<String>()
+    override val input = PublishSubject.create<ILineAccumulator.Input>()
 
     object OverranException : Exception()
 
     init {
-        lines = input.flatMap(this::accumulate)
+        input
+            .flatMap(this::accumulate)
+            .subscribe(lines)
     }
 
-    private fun accumulate(input: Input): Observable<String> {
+    private fun accumulate(input: ILineAccumulator.Input): Observable<String> {
         val bytes = input.bytes
-        val endPosition = input.read
+        val endPosition = input.bytesRead
 
         var startPosition = 0
+
+        if (bytes.isEmpty()) {
+            return Observable.empty()
+        }
 
         val lines = mutableListOf<String>()
 
@@ -75,7 +85,7 @@ class LineAccumulator(private val bufferSize: Int): ILineAccumulator {
                     break@loop
                 }
             } else {
-                // no newline, try to put all of the bytes on the incomingBuffer, check for size limit
+                // no newline, try to put all of the bytesRead on the incomingBuffer, check for size limit
 
                 val bytesRemaining = endPosition - startPosition
                 if (bytesRemaining + buffer.position() >= bufferSize) {

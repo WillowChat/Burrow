@@ -1,12 +1,10 @@
 package chat.willow.burrow.connection
 
 import chat.willow.burrow.Burrow
+import chat.willow.burrow.Burrow.Server.Companion.MAX_LINE_LENGTH
 import chat.willow.burrow.connection.line.ILineAccumulator
 import chat.willow.burrow.connection.line.LineAccumulator
-import chat.willow.burrow.connection.network.ConnectionId
-import chat.willow.burrow.connection.network.INetworkSocket
-import chat.willow.burrow.connection.network.ISocketProcessor
-import chat.willow.burrow.connection.network.SocketProcessor
+import chat.willow.burrow.connection.listeners.IConnectionListening
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.IKale
 import chat.willow.kale.irc.message.IrcMessageSerialiser
@@ -20,57 +18,21 @@ import java.util.concurrent.ConcurrentHashMap
 interface IConnectionTracker {
 
     operator fun get(id: ConnectionId): BurrowConnection?
+    fun addConnectionListener(listener: IConnectionListening)
 
     val tracked: Observable<ConnectionTracker.Tracked>
     val dropped: Observable<ConnectionTracker.Dropped>
+    val read: Observable<Pair<ConnectionId, String>>
 
     val drop: Observer<ConnectionId>
     val send: Observer<Pair<ConnectionId, Any>>
 
 }
 
-interface IBurrowConnectionFactory {
-    fun create(id: ConnectionId, host: String, socket: INetworkSocket, accumulator: ILineAccumulator): BurrowConnection
-}
-
-object BurrowConnectionFactory: IBurrowConnectionFactory {
-    override fun create(id: ConnectionId, host: String, socket: INetworkSocket, accumulator: ILineAccumulator): BurrowConnection {
-        return BurrowConnection(id, host, socket, accumulator)
-    }
-}
-
-// todo: make most of this internal
-data class BurrowConnection(val id: ConnectionId, val host: String, val socket: INetworkSocket, val accumulator: ILineAccumulator) {
-
-    override fun toString(): String {
-        return id.toString()
-    }
-
-    override fun hashCode(): Int {
-        var result = id
-        result = 31 * result + host.hashCode()
-        result = 31 * result + socket.hashCode()
-        result = 31 * result + accumulator.hashCode()
-        return result
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is BurrowConnection) return false
-
-        if (id != other.id) return false
-        if (host != other.host) return false
-
-        return true
-    }
-
-}
-
-class ConnectionTracker(socketProcessor: ISocketProcessor,
-                        private val bufferSize: Int,
-                        var kale: IKale? = null,
-                        private val connectionFactory: IBurrowConnectionFactory,
-                        socketScheduler: Scheduler = Schedulers.single()): IConnectionTracker {
+class ConnectionTracker(
+    var kale: IKale? = null,
+    private val socketScheduler: Scheduler = Schedulers.single()
+): IConnectionTracker {
 
     private val LOGGER = loggerFor<ConnectionTracker>()
 
@@ -83,56 +45,55 @@ class ConnectionTracker(socketProcessor: ISocketProcessor,
     override val dropped = PublishSubject.create<Dropped>()
 
     override val drop = PublishSubject.create<ConnectionId>()
-
     override val send = PublishSubject.create<Pair<ConnectionId, Any>>()
+    override val read = PublishSubject.create<Pair<ConnectionId, String>>()
+
+    private val accumulators = ConcurrentHashMap<ConnectionId, ILineAccumulator>()
 
     init {
-        socketProcessor.accepted
-                .map(this::track)
-                .subscribe(tracked)
-
-        socketProcessor.read
-                .map { Pair(it.id, LineAccumulator.Input(bytes = it.buffer.array(), read = it.bytes)) }
-                .subscribe {
-                    connections[it.first]?.accumulator?.input?.onNext(it.second)
-                }
-
-        socketProcessor.closed
-                .subscribe {
-                    LOGGER.info("connection ${it.id} closed - dropping")
-
-                    connections.remove(it.id)
-                }
-
-        socketProcessor.closed
-                .map { Dropped(id = it.id) }
-                .subscribe(dropped)
-
         drop
-                .observeOn(socketScheduler)
-                .subscribe {
-                    connections[it]?.socket?.close()
-                }
+            .observeOn(socketScheduler)
+            .subscribe {
+                accumulators -= it
+                connections[it]?.primitiveConnection?.close()
+            }
 
         send
-                .observeOn(socketScheduler)
-                .subscribe {
-                    this.send(it.first, it.second)
-                }
+            .observeOn(socketScheduler)
+            .subscribe {
+                this.send(it.first, it.second)
+            }
     }
 
-    private fun track(accepted: SocketProcessor.Accepted): Tracked {
-        val address = accepted.socket.host
+    override fun addConnectionListener(listener: IConnectionListening) {
+        listener.accepted
+            .subscribe { track(listener, it) }
 
-        val accumulator = LineAccumulator(bufferSize = bufferSize)
+        listener.closed
+            .subscribe {
+                LOGGER.info("connection ${it.id} closed - dropping")
+                drop.onNext(it.id)
+            }
 
-        val connection = connectionFactory.create(accepted.id, host = address, socket = accepted.socket, accumulator = accumulator)
+        listener.closed
+            .map { Dropped(id = it.id) }
+            .subscribe(dropped)
+    }
 
-        connections[accepted.id] = connection
+    private fun track(listener: IConnectionListening, accepted: IConnectionListening.Accepted) {
+        val accumulator = LineAccumulator(bufferSize = MAX_LINE_LENGTH)
 
-        LOGGER.info("tracked connection $connection")
+        accumulator.lines
+            .map { accepted.id to it }
+            .subscribe(read)
 
-        return Tracked(connection = connection)
+        accumulators += accepted.id to accumulator
+
+        val input = listener.read
+            .filter { it.id == accepted.id }
+            .observeOn(socketScheduler)
+
+        listener.prepare(input, accumulator, accepted, tracked, drop, connections)
     }
 
     override fun get(id: ConnectionId): BurrowConnection? {
@@ -158,7 +119,7 @@ class ConnectionTracker(socketProcessor: ISocketProcessor,
     }
 
     private fun send(id: ConnectionId, line: String) {
-        val socket = connections[id]?.socket
+        val socket = connections[id]?.primitiveConnection
         if (socket == null) {
             LOGGER.warn("tried to send something to missing client $id")
             return

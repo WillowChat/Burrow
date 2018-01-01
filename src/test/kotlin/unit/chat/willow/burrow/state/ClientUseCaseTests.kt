@@ -1,22 +1,23 @@
 package unit.chat.willow.burrow.state
 
-import chat.willow.burrow.connection.network.ConnectionId
+import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.state.ClientTracker
-import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.state.ClientsUseCase
 import chat.willow.burrow.state.IClientsUseCase
-import unit.chat.willow.burrow.connection.MockConnectionTracker
+import chat.willow.burrow.utility.makeClient
 import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.irc.prefix.prefix
 import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.observers.TestObserver
 import io.reactivex.subjects.PublishSubject
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
-import org.junit.Assert.*
 import unit.chat.willow.burrow.configuration.networkName
 import unit.chat.willow.burrow.configuration.serverName
+import unit.chat.willow.burrow.connection.MockConnectionTracker
 
 class ClientUseCaseTests {
 

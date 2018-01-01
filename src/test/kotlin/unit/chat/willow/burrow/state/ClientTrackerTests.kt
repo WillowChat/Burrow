@@ -1,15 +1,18 @@
 package unit.chat.willow.burrow.state
 
 import chat.willow.burrow.connection.BurrowConnection
+import chat.willow.burrow.connection.ConnectionId
+import chat.willow.burrow.connection.ConnectionTracker
 import chat.willow.burrow.connection.IConnectionTracker
-import chat.willow.burrow.connection.line.LineAccumulator
-import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.state.*
 import chat.willow.kale.IKale
 import chat.willow.kale.core.message.IrcMessage
 import chat.willow.kale.core.message.KaleDescriptor
 import chat.willow.kale.core.message.KaleObservable
-import com.nhaarman.mockito_kotlin.*
+import com.nhaarman.mockito_kotlin.any
+import com.nhaarman.mockito_kotlin.mock
+import com.nhaarman.mockito_kotlin.verify
+import com.nhaarman.mockito_kotlin.whenever
 import io.reactivex.subjects.PublishSubject
 import org.junit.Before
 import org.junit.Test
@@ -25,11 +28,16 @@ class ClientTrackerTests {
 
     private var lines = PublishSubject.create<String>()
     private var messages = PublishSubject.create<KaleObservable<IrcMessage>>()
+    private var read = PublishSubject.create<Pair<ConnectionId, String>>()
+    private var dropped = PublishSubject.create<ConnectionTracker.Dropped>()
 
     private lateinit var track: PublishSubject<RegistrationUseCase.Registered>
 
     @Before fun setUp() {
         mockConnectionTracker = mock()
+        whenever(mockConnectionTracker.read).thenReturn(read)
+        whenever(mockConnectionTracker.dropped).thenReturn(dropped)
+
         mockRegistration = mock()
         mockClientsUseCase = mock()
         mockKaleFactory = mock()
@@ -52,8 +60,7 @@ class ClientTrackerTests {
     }
 
     @Test fun `when a client is tracked, we track them with the registration use case`() {
-        val accumulator = LineAccumulator(bufferSize = 1)
-        val connection = BurrowConnection(id = 1, host = "", socket = mock(), accumulator = accumulator)
+        val connection = BurrowConnection(id = 1, primitiveConnection = mock())
 
         sut.track.onNext(connection)
 
@@ -61,8 +68,7 @@ class ClientTrackerTests {
     }
 
     @Test fun `when a client fails to register, they're dropped`() {
-        val accumulator = LineAccumulator(bufferSize = 1)
-        val connection = BurrowConnection(id = 1, host = "", socket = mock(), accumulator = accumulator)
+        val connection = BurrowConnection(id = 1, primitiveConnection = mock())
         sut.track.onNext(connection)
         val drop = PublishSubject.create<ConnectionId>()
         whenever(mockConnectionTracker.drop).thenReturn(drop)

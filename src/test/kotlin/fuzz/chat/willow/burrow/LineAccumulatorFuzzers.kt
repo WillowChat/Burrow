@@ -1,6 +1,7 @@
 package fuzz.chat.willow.burrow
 
 import chat.willow.burrow.Burrow
+import chat.willow.burrow.connection.line.ILineAccumulator
 import chat.willow.burrow.connection.line.LineAccumulator
 import org.junit.Before
 import org.junit.Test
@@ -25,7 +26,7 @@ class LineAccumulatorFuzzers {
             val string = generateRandomLine(dictionary = listOf(" ", "a", "b", "c", "D", "E", "F", "1", "2", "3", "!", "@", "#", "🔥", "🥕", "✨"), maxByteSize = 16)
             val stringBytes = string.toByteArray(Burrow.Server.UTF_8)
 
-            sut.input.onNext(LineAccumulator.Input(bytes = stringBytes, read = stringBytes.size))
+            sut.input.onNext(ILineAccumulator.Input(bytes = stringBytes, bytesRead = stringBytes.size))
         }
 
         testObserver.assertValueCount(1_000_000)

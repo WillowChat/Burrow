@@ -2,10 +2,8 @@ package chat.willow.burrow.utility
 
 import chat.willow.burrow.Burrow
 import chat.willow.burrow.connection.BurrowConnection
-import chat.willow.burrow.connection.line.LineAccumulator
-import chat.willow.burrow.connection.network.ConnectionId
+import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.state.ClientTracker
-import unit.chat.willow.burrow.state.message
 import chat.willow.kale.IKale
 import chat.willow.kale.core.message.KaleDescriptor
 import chat.willow.kale.helper.CaseInsensitiveNamedMap
@@ -15,6 +13,7 @@ import com.nhaarman.mockito_kotlin.any
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.whenever
 import io.reactivex.subjects.PublishSubject
+import unit.chat.willow.burrow.state.message
 
 
 data class TestClient(val kale: IKale, val client: ClientTracker.ConnectedClient) {
@@ -31,8 +30,7 @@ data class TestClient(val kale: IKale, val client: ClientTracker.ConnectedClient
 }
 
 fun makeClient(kale: IKale = KaleUtilities.mockKale(), id: ConnectionId = 1, prefix: Prefix = chat.willow.kale.irc.prefix.prefix("someone")): TestClient {
-    val accumulator = LineAccumulator(bufferSize = 1)
-    val connection = BurrowConnection(id = id, host = prefix.host ?: "", socket = mock(), accumulator = accumulator)
+    val connection = BurrowConnection(id = id, primitiveConnection = mock())
 
     return TestClient(kale = kale, client = ClientTracker.ConnectedClient(connection, kale, prefix))
 }

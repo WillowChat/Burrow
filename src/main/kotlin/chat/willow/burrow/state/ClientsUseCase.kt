@@ -1,8 +1,8 @@
 package chat.willow.burrow.state
 
 import chat.willow.burrow.Burrow
+import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.connection.IConnectionTracker
-import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.helper.CaseInsensitiveNamedMap

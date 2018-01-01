@@ -1,8 +1,8 @@
 package chat.willow.burrow.state
 
 import chat.willow.burrow.connection.BurrowConnection
+import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.connection.IConnectionTracker
-import chat.willow.burrow.connection.network.ConnectionId
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.IKale
 import chat.willow.kale.Kale
@@ -85,14 +85,18 @@ class ClientTracker(val connections: IConnectionTracker,
         val clientKale = kaleFactory.create()
         kales += connection.id to clientKale
 
-        connection.accumulator.lines
-                .observeOn(lineScheduler)
-                .subscribe(clientKale.lines)
+        connections.read
+            // todo: optimise?
+            .filter { it.first == connection.id }
+            .map { it.second }
+            .observeOn(lineScheduler)
+            .subscribe(clientKale.lines)
 
         clientKale.messages.subscribe { LOGGER.info("${connection.id} ~ >> ${it.message}")}
 
         registrationUseCase
                 .track(clientKale, supportedCaps, connection = connection)
+                .takeUntil(connections.dropped.filter { it.id == connection.id })
                 .subscribeBy(onNext = {
                     registered(connection, details = it, kale = clientKale)
                 },

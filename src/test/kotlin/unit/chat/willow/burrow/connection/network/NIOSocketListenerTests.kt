@@ -1,7 +1,12 @@
 package unit.chat.willow.burrow.connection.network
 
+import chat.willow.burrow.connection.IConnectionIdProvider
+import chat.willow.burrow.connection.IPrimitiveConnection
+import chat.willow.burrow.connection.listeners.NIOSocketListener
+import chat.willow.burrow.connection.listeners.preparing.IConnectionPreparing
+import chat.willow.burrow.connection.network.INIOWrapper
+import chat.willow.burrow.connection.network.ISelectionKeyWrapper
 import chat.willow.burrow.helper.IInterruptedChecker
-import chat.willow.burrow.connection.network.*
 import com.nhaarman.mockito_kotlin.any
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.verify
@@ -11,19 +16,31 @@ import org.junit.Test
 import java.nio.ByteBuffer
 import java.nio.channels.SelectionKey
 
-class SocketProcessorTests {
+class NIOSocketListenerTests {
 
-    private lateinit var sut: SocketProcessor
+    private lateinit var sut: NIOSocketListener
     private lateinit var mockNioWrapper: INIOWrapper
     private lateinit var mockIncomingBuffer: ByteBuffer
     private lateinit var mockInterruptedChecker: IInterruptedChecker
+    private lateinit var mockIdProvider: IConnectionIdProvider
+    private lateinit var mockConnectionPreparing: IConnectionPreparing
 
     @Before fun setUp() {
         mockNioWrapper = mock()
         mockIncomingBuffer = mock()
         mockInterruptedChecker = mock()
+        mockIdProvider = mock()
+        mockConnectionPreparing = mock()
 
-        sut = SocketProcessor(mockNioWrapper, mockIncomingBuffer, mockInterruptedChecker)
+        sut = NIOSocketListener(
+            "",
+            0,
+            mockNioWrapper,
+            mockIncomingBuffer,
+            mockInterruptedChecker,
+            mockIdProvider,
+            mockConnectionPreparing
+        )
     }
 
     @Test fun `when run, tells nio wrapper to clear selected keys`() {
@@ -51,7 +68,7 @@ class SocketProcessorTests {
         whenever(mockNioWrapper.select())
                 .thenReturn(mutableSetOf(acceptableKey))
 
-        val mockSocket: INetworkSocket = mock()
+        val mockSocket: IPrimitiveConnection = mock()
 
         val mockSelectionKey: SelectionKey = mock()
 
@@ -77,7 +94,7 @@ class SocketProcessorTests {
         whenever(mockNioWrapper.select())
                 .thenReturn(mutableSetOf(acceptableKey))
 
-        val mockSocket: INetworkSocket = mock()
+        val mockSocket: IPrimitiveConnection = mock()
         val mockSelectionKey: SelectionKey = mock()
 
         whenever(mockNioWrapper.accept(any()))
@@ -125,7 +142,7 @@ class SocketProcessorTests {
         whenever(mockNioWrapper.read(any(), any()))
                 .thenReturn(10 to 1)
 
-        sut.run()
+        sut.start()
 
 //        verify(mockDelegate).onRead(1, mockIncomingBuffer, 10)
     }

@@ -1,6 +1,7 @@
 package unit.chat.willow.burrow.connection.line
 
 import chat.willow.burrow.Burrow.Server.Companion.UTF_8
+import chat.willow.burrow.connection.line.ILineAccumulator
 import chat.willow.burrow.connection.line.LineAccumulator
 import org.junit.Before
 import org.junit.Test
@@ -18,7 +19,7 @@ class LineAccumulatorTests {
         val testStringAsBytes = testString.toByteArray(UTF_8)
 
         val observer = sut.lines.test()
-        sut.input.onNext(LineAccumulator.Input(bytes = testStringAsBytes, read = testStringAsBytes.size))
+        sut.input.onNext(ILineAccumulator.Input(bytes = testStringAsBytes, bytesRead = testStringAsBytes.size))
 
         observer.assertValue("12345678123456")
     }
@@ -28,7 +29,7 @@ class LineAccumulatorTests {
         val testStringAsBytes = testString.toByteArray(UTF_8)
 
         val observer = sut.lines.test()
-        sut.input.onNext(LineAccumulator.Input(bytes = testStringAsBytes, read = testStringAsBytes.size))
+        sut.input.onNext(ILineAccumulator.Input(bytes = testStringAsBytes, bytesRead = testStringAsBytes.size))
 
         observer.assertValues("1234", "12345678")
     }
@@ -38,7 +39,7 @@ class LineAccumulatorTests {
         val testStringAsBytes = testString.toByteArray(UTF_8)
 
         val observer = sut.lines.test()
-        sut.input.onNext(LineAccumulator.Input(bytes = testStringAsBytes, read = testStringAsBytes.size))
+        sut.input.onNext(ILineAccumulator.Input(bytes = testStringAsBytes, bytesRead = testStringAsBytes.size))
 
         observer.assertValues("123456781234", "1234567812345")
     }
@@ -50,8 +51,8 @@ class LineAccumulatorTests {
         val testNewlineAsBytes = testNewline.toByteArray(UTF_8)
 
         val observer = sut.lines.test()
-        sut.input.onNext(LineAccumulator.Input(bytes = testStringAsBytes, read = testStringAsBytes.size))
-        sut.input.onNext(LineAccumulator.Input(bytes = testNewlineAsBytes, read = testNewlineAsBytes.size))
+        sut.input.onNext(ILineAccumulator.Input(bytes = testStringAsBytes, bytesRead = testStringAsBytes.size))
+        sut.input.onNext(ILineAccumulator.Input(bytes = testNewlineAsBytes, bytesRead = testNewlineAsBytes.size))
 
         observer.assertValues("123456781234", "1234567812345")
     }
@@ -61,7 +62,7 @@ class LineAccumulatorTests {
         val testStringAsBytes = testString.toByteArray(UTF_8)
 
         val observer = sut.lines.test()
-        sut.input.onNext(LineAccumulator.Input(bytes = testStringAsBytes, read = testStringAsBytes.size))
+        sut.input.onNext(ILineAccumulator.Input(bytes = testStringAsBytes, bytesRead = testStringAsBytes.size))
 
         observer.assertError(LineAccumulator.OverranException)
     }
@@ -71,7 +72,7 @@ class LineAccumulatorTests {
         val testStringAsBytes = testString.toByteArray(UTF_8)
 
         val observer = sut.lines.test()
-        sut.input.onNext(LineAccumulator.Input(bytes = testStringAsBytes, read = testStringAsBytes.size))
+        sut.input.onNext(ILineAccumulator.Input(bytes = testStringAsBytes, bytesRead = testStringAsBytes.size))
 
         observer.assertValue("12345678123").assertError(LineAccumulator.OverranException)
     }
@@ -81,7 +82,7 @@ class LineAccumulatorTests {
         val testStringAsBytes = testString.toByteArray(UTF_8)
 
         val observer = sut.lines.test()
-        sut.input.onNext(LineAccumulator.Input(bytes = testStringAsBytes, read = testStringAsBytes.size))
+        sut.input.onNext(ILineAccumulator.Input(bytes = testStringAsBytes, bytesRead = testStringAsBytes.size))
 
         observer.assertNoValues()
     }
@@ -91,7 +92,7 @@ class LineAccumulatorTests {
         val testStringAsBytes = testString.toByteArray(UTF_8)
 
         val observer = sut.lines.test()
-        sut.input.onNext(LineAccumulator.Input(bytes = testStringAsBytes, read = testStringAsBytes.size))
+        sut.input.onNext(ILineAccumulator.Input(bytes = testStringAsBytes, bytesRead = testStringAsBytes.size))
 
         observer.assertNoValues()
     }
@@ -101,7 +102,7 @@ class LineAccumulatorTests {
         val testStringAsBytes = testString.toByteArray(UTF_8)
 
         val observer = sut.lines.test()
-        sut.input.onNext(LineAccumulator.Input(bytes = testStringAsBytes, read = testStringAsBytes.size))
+        sut.input.onNext(ILineAccumulator.Input(bytes = testStringAsBytes, bytesRead = testStringAsBytes.size))
 
         observer.assertValue("")
     }
@@ -111,7 +112,7 @@ class LineAccumulatorTests {
         val testStringAsBytes = testString.toByteArray(UTF_8)
 
         val observer = sut.lines.test()
-        sut.input.onNext(LineAccumulator.Input(bytes = testStringAsBytes, read = testStringAsBytes.size))
+        sut.input.onNext(ILineAccumulator.Input(bytes = testStringAsBytes, bytesRead = testStringAsBytes.size))
 
         observer.assertNoValues()
     }
@@ -123,8 +124,8 @@ class LineAccumulatorTests {
         val testStringTwoAsBytes = testStringTwo.toByteArray(UTF_8)
 
         val observer = sut.lines.test()
-        sut.input.onNext(LineAccumulator.Input(bytes = testStringOneAsBytes, read = testStringOneAsBytes.size))
-        sut.input.onNext(LineAccumulator.Input(bytes = testStringTwoAsBytes, read = testStringTwoAsBytes.size))
+        sut.input.onNext(ILineAccumulator.Input(bytes = testStringOneAsBytes, bytesRead = testStringOneAsBytes.size))
+        sut.input.onNext(ILineAccumulator.Input(bytes = testStringTwoAsBytes, bytesRead = testStringTwoAsBytes.size))
 
         observer.assertValue("")
     }
@@ -134,7 +135,7 @@ class LineAccumulatorTests {
         val testStringAsBytes = testString.toByteArray(UTF_8)
 
         val observer = sut.lines.test()
-        sut.input.onNext(LineAccumulator.Input(bytes = testStringAsBytes, read = testStringAsBytes.size))
+        sut.input.onNext(ILineAccumulator.Input(bytes = testStringAsBytes, bytesRead = testStringAsBytes.size))
 
         observer.assertValue("123456\uD83E\uDD55✨")
     }

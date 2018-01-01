@@ -1,8 +1,8 @@
 package unit.chat.willow.burrow.state
 
-import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.state.PingUseCase
 import chat.willow.burrow.utility.KaleUtilities.mockKale
+import chat.willow.burrow.utility.makeClient
 import chat.willow.kale.irc.message.rfc1459.PingMessage
 import chat.willow.kale.irc.message.rfc1459.PongMessage
 import chat.willow.kale.irc.prefix.prefix

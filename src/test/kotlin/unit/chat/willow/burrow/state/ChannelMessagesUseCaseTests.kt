@@ -7,7 +7,9 @@ import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.helper.CaseInsensitiveNamedMap
 import chat.willow.kale.irc.message.rfc1459.PrivMsgMessage
 import chat.willow.kale.irc.prefix.prefix
-import com.nhaarman.mockito_kotlin.*
+import com.nhaarman.mockito_kotlin.any
+import com.nhaarman.mockito_kotlin.mock
+import com.nhaarman.mockito_kotlin.whenever
 import io.reactivex.observers.TestObserver
 import org.junit.Before
 import org.junit.Test

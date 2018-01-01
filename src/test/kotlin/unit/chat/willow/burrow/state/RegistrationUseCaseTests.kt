@@ -1,11 +1,9 @@
 package unit.chat.willow.burrow.state
 
 import chat.willow.burrow.connection.BurrowConnection
-import chat.willow.burrow.connection.line.ILineAccumulator
-import chat.willow.burrow.connection.network.ConnectionId
-import chat.willow.burrow.connection.network.INetworkSocket
+import chat.willow.burrow.connection.ConnectionId
+import chat.willow.burrow.connection.IPrimitiveConnection
 import chat.willow.burrow.state.RegistrationUseCase
-import unit.chat.willow.burrow.connection.MockConnectionTracker
 import chat.willow.burrow.utility.makeClient
 import chat.willow.burrow.utility.mockKaleObservable
 import chat.willow.kale.IKale
@@ -17,12 +15,14 @@ import chat.willow.kale.irc.message.rfc1459.NickMessage
 import chat.willow.kale.irc.message.rfc1459.UserMessage
 import chat.willow.kale.irc.prefix.Prefix
 import com.nhaarman.mockito_kotlin.mock
+import com.nhaarman.mockito_kotlin.whenever
 import io.reactivex.observers.TestObserver
 import io.reactivex.schedulers.TestScheduler
 import io.reactivex.subjects.PublishSubject
 import org.junit.Before
 import org.junit.Test
 import unit.chat.willow.burrow.configuration.serverName
+import unit.chat.willow.burrow.connection.MockConnectionTracker
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
@@ -32,8 +32,7 @@ class RegistrationUseCaseTests {
     private lateinit var mockConnections: MockConnectionTracker
     private lateinit var mockClients: MockClientsUseCase
 
-    private lateinit var mockSocket: INetworkSocket
-    private lateinit var mockAccumulator: ILineAccumulator
+    private lateinit var mockPrimitiveConnection: IPrimitiveConnection
 
     private lateinit var mockKale: IKale
 
@@ -50,14 +49,15 @@ class RegistrationUseCaseTests {
     private lateinit var sends: TestObserver<Pair<ConnectionId, Any>>
 
     @Before fun setUp() {
-        mockSocket = mock()
-        mockAccumulator = mock()
+        mockPrimitiveConnection = mock()
+        whenever(mockPrimitiveConnection.host).thenReturn("host")
         mockConnections = MockConnectionTracker()
         sends = mockConnections.sendSubject.test()
         mockClients = MockClientsUseCase()
 
         mockKale = mock()
-        connection = BurrowConnection(id = 0, host = "host", socket = mockSocket, accumulator = mockAccumulator)
+        connection =
+                BurrowConnection(id = 0, primitiveConnection = mockPrimitiveConnection)
 
         mockUser = mockKaleObservable(mockKale, UserMessage.Command.Descriptor)
         mockNick = mockKaleObservable(mockKale, NickMessage.Command.Descriptor)
