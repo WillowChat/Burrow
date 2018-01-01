@@ -53,9 +53,12 @@ class NIOSocketListener(private val hostname: String,
 
             nioWrapper.clearSelectedKeys()
         }
+
+        LOGGER.info("Ended")
     }
 
     override fun tearDown() {
+        LOGGER.info("Tearing down")
         nioWrapper.tearDown()
     }
 
