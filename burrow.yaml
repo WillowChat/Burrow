@@ -9,4 +9,8 @@ server:
   -
     type: "haproxy_v2"
     host: "127.0.0.1"
-    port: 6667
+    port: 6660
+  -
+    type: "plaintext"
+    host: "127.0.0.1"
+    port: 6661
