@@ -13,6 +13,7 @@ import io.reactivex.Observer
 import io.reactivex.schedulers.TestScheduler
 import io.reactivex.subjects.PublishSubject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import unit.chat.willow.burrow.connection.listeners.MockConnectionListening
@@ -78,6 +79,19 @@ class ConnectionTrackerTests {
         listener.closedSubject.onNext(IConnectionListening.Closed(id = 1))
 
         observer.assertValue(ConnectionTracker.Dropped(id = 1))
+    }
+
+    @Test fun `after dropping a connection, it is not gettable`() {
+        val socket: IPrimitiveConnection = mock()
+        whenever(socket.host).thenReturn("somewhere")
+        val connection = BurrowConnection(id = 1, primitiveConnection = socket)
+        listener.acceptedSubject.onNext(IConnectionListening.Accepted(1, socket))
+        preparer.spyConnections[1] = connection
+
+        sut.drop.onNext(1)
+        scheduler.triggerActions()
+
+        assertNull(sut[1])
     }
 
 }

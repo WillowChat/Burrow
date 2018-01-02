@@ -56,6 +56,7 @@ class ConnectionTracker(
             .subscribe {
                 accumulators -= it
                 connections[it]?.primitiveConnection?.close()
+                connections -= it
             }
 
         send
