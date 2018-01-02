@@ -170,6 +170,16 @@ class RegistrationUseCaseTests {
         sends.assertValue(connection.id to KaleNumerics.NICKNAMEINUSE.Message(source = serverName().name, target = "alreadyTakenNick", content = "Nickname is already in use"))
     }
 
+    @Test fun `negotiation with an invalid nick results in ERRONEUSNICKNAME`() {
+        val observer = sut.track(mockKale, mapOf(), connection).test()
+        mockClients.stubLookUpClients = mapOf()
+        mockUser.onNext(UserMessage.Command("username", "*", "realname"))
+        mockNick.onNext(NickMessage.Command("_invalidnick"))
+
+        observer.assertEmpty()
+        sends.assertValue(connection.id to KaleNumerics.ERRONEOUSNICKNAME.Message(source = serverName().name, target = "_invalidnick", content = "Erroneous nickname"))
+    }
+
 }
 
 fun <T> message(message: T): KaleObservable<T> {

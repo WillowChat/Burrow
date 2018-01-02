@@ -3,6 +3,7 @@ package chat.willow.burrow.state
 import chat.willow.burrow.Burrow
 import chat.willow.burrow.Burrow.Validation.nick
 import chat.willow.burrow.connection.BurrowConnection
+import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.connection.IConnectionTracker
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.IKale
@@ -46,7 +47,15 @@ class RegistrationUseCase(private val connections: IConnectionTracker,
                 .filter { it.second }
                 .map { it.first }
 
-        val validatedNicks = nicks.map { it.message.nickname to validateNick(it.message.nickname) }
+        val nickAndValidation = nicks.map { it.message.nickname to validateNick(it.message.nickname) }
+                .share()
+
+        nickAndValidation
+            .filter { !it.second }
+            .map { it.first to connection.id }
+            .subscribe(this::sendErroneousNick)
+
+        val validatedNicks = nickAndValidation
                 .filter { it.second }
                 .map { it.first }
 
@@ -143,6 +152,12 @@ class RegistrationUseCase(private val connections: IConnectionTracker,
         val (nick, connection) = nickAndConnection
         val message = KaleNumerics.NICKNAMEINUSE.Message(source = serverName.name, target = nick, content = "Nickname is already in use")
         connections.send.onNext(connection.id to message)
+    }
+
+    private fun sendErroneousNick(nickAndConnection: Pair<String, ConnectionId>) {
+        val (nick, connectionId) = nickAndConnection
+        val message = KaleNumerics.ERRONEOUSNICKNAME.Message(source = serverName.name, target = nick, content = "Erroneous nickname")
+        connections.send.onNext(connectionId to message)
     }
 
 }
