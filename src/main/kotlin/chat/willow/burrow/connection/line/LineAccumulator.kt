@@ -7,6 +7,7 @@ import io.reactivex.Observer
 import io.reactivex.rxkotlin.toObservable
 import io.reactivex.subjects.PublishSubject
 import java.nio.ByteBuffer
+import java.util.*
 
 val NEW_LINE_BYTE = '\n'.toByte()
 val CARRIAGE_RETURN_BYTE = '\r'.toByte()
@@ -15,7 +16,23 @@ interface ILineAccumulator {
     val input: Observer<Input>
     val lines: Observable<String>
 
-    data class Input(val bytes: ByteArray, val bytesRead: Int)
+    data class Input(val bytes: ByteArray, val bytesRead: Int) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is Input) return false
+
+            if (!Arrays.equals(bytes, other.bytes)) return false
+            if (bytesRead != other.bytesRead) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = Arrays.hashCode(bytes)
+            result = 31 * result + bytesRead
+            return result
+        }
+    }
 }
 
 class LineAccumulator(private val bufferSize: Int): ILineAccumulator {

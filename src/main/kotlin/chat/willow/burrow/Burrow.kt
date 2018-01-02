@@ -9,6 +9,7 @@ import chat.willow.burrow.connection.listeners.IConnectionListening
 import chat.willow.burrow.connection.listeners.NIOSocketListener
 import chat.willow.burrow.connection.listeners.preparing.HaproxyConnectionPreparing
 import chat.willow.burrow.connection.listeners.preparing.PlainConnectionPreparing
+import chat.willow.burrow.connection.network.HaproxyHeaderDecoder
 import chat.willow.burrow.connection.network.NIOWrapper
 import chat.willow.burrow.connection.network.SelectorFactory
 import chat.willow.burrow.helper.ThreadInterruptedChecker
@@ -92,7 +93,7 @@ object Burrow {
         val buffer = ByteBuffer.allocate(Server.MAX_LINE_LENGTH)
 
         val haproxyPreparing =
-            HaproxyConnectionPreparing(BurrowConnectionFactory)
+            HaproxyConnectionPreparing(BurrowConnectionFactory, HaproxyHeaderDecoder())
 
         return NIOSocketListener(
             host,

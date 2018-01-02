@@ -3,6 +3,9 @@ package unit.chat.willow.burrow.connection.line
 import chat.willow.burrow.Burrow.Server.Companion.UTF_8
 import chat.willow.burrow.connection.line.ILineAccumulator
 import chat.willow.burrow.connection.line.LineAccumulator
+import io.reactivex.Observable
+import io.reactivex.Observer
+import io.reactivex.subjects.PublishSubject
 import org.junit.Before
 import org.junit.Test
 
@@ -140,4 +143,18 @@ class LineAccumulatorTests {
         observer.assertValue("123456\uD83E\uDD55✨")
     }
 
+}
+
+class MockLineAccumulator: ILineAccumulator {
+
+    override val input: Observer<ILineAccumulator.Input>
+    val inputSubject = PublishSubject.create<ILineAccumulator.Input>()
+
+    override val lines: Observable<String>
+    val linesSubject = PublishSubject.create<String>()
+
+    init {
+        input = inputSubject
+        lines = linesSubject
+    }
 }

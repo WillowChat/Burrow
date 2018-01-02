@@ -18,8 +18,8 @@ class PlainConnectionPreparing(private val factory: IBurrowConnectionFactory) :
 
     override fun prepare(
         input: Observable<IConnectionListening.Read>,
-        accumulator: LineAccumulator,
-        accepted: IConnectionListening.Accepted,
+        accumulator: ILineAccumulator,
+        connection: IConnectionListening.Accepted,
         tracked: Observer<ConnectionTracker.Tracked>,
         drop: Observer<ConnectionId>,
         connections: MutableMap<ConnectionId, BurrowConnection>
@@ -33,12 +33,12 @@ class PlainConnectionPreparing(private val factory: IBurrowConnectionFactory) :
             }
             .subscribe(accumulator.input)
 
-        val primitiveConnection = accepted.primitiveConnection
-        val connection = factory.create(accepted.id, primitiveConnection)
+        val primitiveConnection = connection.primitiveConnection
+        val burrowConnection = factory.create(connection.id, primitiveConnection)
 
-        connections[connection.id] = connection
+        connections[connection.id] = burrowConnection
 
         LOGGER.info("Tracked connection $connection")
-        tracked.onNext(ConnectionTracker.Tracked(connection))
+        tracked.onNext(ConnectionTracker.Tracked(burrowConnection))
     }
 }

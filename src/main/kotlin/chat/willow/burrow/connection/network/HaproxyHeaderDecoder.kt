@@ -6,11 +6,11 @@ import java.net.InetAddress
 import java.nio.ByteBuffer
 
 
-interface IHaproxyFrameAccumulator {
+interface IHaproxyHeaderDecoder {
     fun decode(input: HaproxyHeaderDecoder.Input): HaproxyHeaderDecoder.Output
 }
 
-class HaproxyHeaderDecoder : IHaproxyFrameAccumulator {
+class HaproxyHeaderDecoder : IHaproxyHeaderDecoder {
 
     private val LOGGER = loggerFor<HaproxyHeaderDecoder>()
 
@@ -127,7 +127,7 @@ class HaproxyHeaderDecoder : IHaproxyFrameAccumulator {
         }
 
         return (0 until HAPROXY_V2_PREFIX.size)
-            .none { bytes[it] != HAPROXY_V2_PREFIX[it] }
+            .all { bytes[it] == HAPROXY_V2_PREFIX[it] }
     }
 
     private fun readRemainingPayloadLength(buffer: ByteBuffer): Int? {
