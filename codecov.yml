@@ -8,6 +8,7 @@ coverage:
   - **/*Factory.kt
   - **/*Sleeper.kt
   - **/*Wrapper.kt
+  - **/Burrow.kt
   status:
     project: off
     patch: off
