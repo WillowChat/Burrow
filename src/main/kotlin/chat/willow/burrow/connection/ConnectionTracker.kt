@@ -108,13 +108,13 @@ class ConnectionTracker(
             return
         }
 
+        LOGGER.debug("$id ~ << $ircMessage")
+
         val line = IrcMessageSerialiser.serialise(ircMessage)
         if (line == null) {
             LOGGER.warn("failed to serialise IrcMessage: $ircMessage")
             return
         }
-
-        LOGGER.info("$id ~ << $line")
 
         send(id, line)
     }

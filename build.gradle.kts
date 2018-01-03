@@ -73,7 +73,9 @@ repositories {
 dependencies {
     implementation(kotlin("stdlib", kotlinVersion as String))
     implementation(kotlin("reflect", kotlinVersion as String))
-    implementation("org.slf4j:slf4j-api:1.7.21")
+
+    implementation("ch.qos.logback:logback-classic:1.2.3")
+
     implementation("chat.willow.kale:Kale:$kaleVersion")
     kapt("chat.willow.kale:Kale:$kaleVersion")
     implementation("com.squareup.okio:okio:1.11.0")
@@ -83,8 +85,6 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.9.3")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.3")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.9.3")
-
-    runtime("org.slf4j:slf4j-simple:1.7.21")
 
     testImplementation("junit:junit:4.12")
     testImplementation("org.mockito:mockito-core:2.2.9")

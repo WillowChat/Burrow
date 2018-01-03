@@ -92,7 +92,9 @@ class ClientTracker(val connections: IConnectionTracker,
             .observeOn(lineScheduler)
             .subscribe(clientKale.lines)
 
-        clientKale.messages.subscribe { LOGGER.info("${connection.id} ~ >> ${it.message}")}
+        clientKale.messages
+            .map { "${connection.id} ~ >> ${it.message}" }
+            .subscribe(LOGGER::debug)
 
         registrationUseCase
                 .track(clientKale, supportedCaps, connection = connection)
