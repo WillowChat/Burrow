@@ -40,7 +40,7 @@ class BurrowExternalResource: ExternalResource() {
         var socket: Socket? = null
         retry@for (i in 0..30) {
             try {
-                socket = Socket("localhost", 6789)
+                socket = Socket("127.0.0.1", 6788)
                 break@retry
             } catch (exception: IOException) {
                 Thread.sleep(100)

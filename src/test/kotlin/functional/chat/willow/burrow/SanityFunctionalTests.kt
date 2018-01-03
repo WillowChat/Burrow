@@ -28,4 +28,13 @@ class SanityFunctionalTests {
         assertEquals(":🐰 001 someone_ :Welcome to Burrow Tests", response)
     }
 
+    @Test fun `trying to register with an erroneous nick results in an error`() {
+        val socket = burrow.socket()
+
+        socket.output.println("NICK _someone")
+
+        val response = socket.input.readLine()
+        assertEquals(":🐰 432 _someone :Erroneous nickname", response)
+    }
+
 }

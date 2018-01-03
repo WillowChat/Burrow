@@ -127,13 +127,14 @@ object Burrow {
         )
     }
 
-    fun createKale(router: IKaleRouter, metadataFactory: IKaleMetadataFactory): IKale {
+    private fun createKale(router: IKaleRouter, metadataFactory: IKaleMetadataFactory): IKale {
         router.register(JoinMessage.Message::class, JoinMessage.Message.Serialiser)
         router.register(PartMessage.Message::class, PartMessage.Message.Serialiser)
         router.register(PrivMsgMessage.Message::class, PrivMsgMessage.Message.Serialiser)
 
         router.register(KaleNumerics.WELCOME.Message::class, KaleNumerics.WELCOME.Serialiser)
         router.register(KaleNumerics.NICKNAMEINUSE.Message::class, KaleNumerics.NICKNAMEINUSE.Serialiser)
+        router.register(KaleNumerics.ERRONEOUSNICKNAME.Message::class, KaleNumerics.ERRONEOUSNICKNAME.Serialiser)
         router.register(KaleNumerics.NOSUCHCHANNEL.Message::class, KaleNumerics.NOSUCHCHANNEL.Serialiser)
         router.register(KaleNumerics.ENDOFNAMES.Message::class, KaleNumerics.ENDOFNAMES.Serialiser)
         router.register(Rpl353Message.Message::class, Rpl353Message.Message.Serialiser)
