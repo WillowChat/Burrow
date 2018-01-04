@@ -70,7 +70,6 @@ class ConnectionTracker(
         LOGGER.info("Adding listener: $listener")
 
         listener.accepted
-            .observeOn(scheduler)
             .doOnNext { LOGGER.debug("Connection accepted - $it") }
             .subscribe { track(listener, it) }
 
@@ -91,12 +90,14 @@ class ConnectionTracker(
         val accumulator = LineAccumulator(bufferSize = MAX_LINE_LENGTH)
 
         accumulator.lines
+            .observeOn(scheduler)
             .map { accepted.id to it }
             .subscribe(read)
 
         accumulators += accepted.id to accumulator
 
         val input = listener.read
+            .observeOn(scheduler)
             .filter { it.id == accepted.id }
             .observeOn(scheduler)
 

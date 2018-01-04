@@ -54,9 +54,6 @@ class BurrowExternalResource: ExternalResource() {
         socket.keepAlive = false
         socket.soTimeout = 1000
 
-        // todo: investigate bug where input is dropped whilst connecting and tracking
-        Thread.sleep(100)
-
         val socketOut = PrintWriter(socket.getOutputStream(), true)
         val socketIn = BufferedReader(InputStreamReader(socket.getInputStream()))
 
