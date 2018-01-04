@@ -29,7 +29,7 @@ interface IRegistrationUseCase {
 class RegistrationUseCase(private val connections: IConnectionTracker,
                           private val clients: IClientsUseCase,
                           private val serverName: INamed,
-                          private val scheduler: Scheduler = Schedulers.computation()): IRegistrationUseCase {
+                          private val timerScheduler: Scheduler = Schedulers.computation()): IRegistrationUseCase {
 
     private val LOGGER = loggerFor<RegistrationUseCase>()
 
@@ -136,7 +136,7 @@ class RegistrationUseCase(private val connections: IConnectionTracker,
                 }
 
         return Observable.merge(rfc1459Registration, ircv3Registration)
-                .timeout(TIMEOUT_SECONDS, TimeUnit.SECONDS, scheduler)
+                .timeout(TIMEOUT_SECONDS, TimeUnit.SECONDS, timerScheduler)
                 .take(1)
     }
 

@@ -5,13 +5,13 @@ import chat.willow.burrow.Burrow.Server.Companion.MAX_LINE_LENGTH
 import chat.willow.burrow.connection.line.ILineAccumulator
 import chat.willow.burrow.connection.line.LineAccumulator
 import chat.willow.burrow.connection.listeners.IConnectionListening
+import chat.willow.burrow.helper.BurrowSchedulers
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.IKale
 import chat.willow.kale.irc.message.IrcMessageSerialiser
 import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.Scheduler
-import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 import java.util.concurrent.ConcurrentHashMap
 
@@ -31,7 +31,7 @@ interface IConnectionTracker {
 
 class ConnectionTracker(
     var kale: IKale? = null,
-    private val socketScheduler: Scheduler = Schedulers.single()
+    private val scheduler: Scheduler = BurrowSchedulers.unsharedSingleThread(name = "connections")
 ): IConnectionTracker {
 
     private val LOGGER = loggerFor<ConnectionTracker>()
@@ -52,7 +52,7 @@ class ConnectionTracker(
 
     init {
         drop
-            .observeOn(socketScheduler)
+            .observeOn(scheduler)
             .subscribe {
                 accumulators -= it
                 connections[it]?.primitiveConnection?.close()
@@ -60,23 +60,29 @@ class ConnectionTracker(
             }
 
         send
-            .observeOn(socketScheduler)
+            .observeOn(scheduler)
             .subscribe {
                 this.send(it.first, it.second)
             }
     }
 
     override fun addConnectionListener(listener: IConnectionListening) {
+        LOGGER.info("Adding listener: $listener")
+
         listener.accepted
+            .observeOn(scheduler)
+            .doOnNext { LOGGER.debug("Connection accepted - $it") }
             .subscribe { track(listener, it) }
 
         listener.closed
+            .observeOn(scheduler)
             .subscribe {
-                LOGGER.info("connection ${it.id} closed - dropping")
+                LOGGER.info("Connection ${it.id} closed - dropping")
                 drop.onNext(it.id)
             }
 
         listener.closed
+            .observeOn(scheduler)
             .map { Dropped(id = it.id) }
             .subscribe(dropped)
     }
@@ -92,7 +98,7 @@ class ConnectionTracker(
 
         val input = listener.read
             .filter { it.id == accepted.id }
-            .observeOn(socketScheduler)
+            .observeOn(scheduler)
 
         listener.prepare(input, accumulator, accepted, tracked, drop, connections)
     }

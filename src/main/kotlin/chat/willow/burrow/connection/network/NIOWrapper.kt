@@ -23,6 +23,9 @@ open class NIOPrimitiveConnection(private val internalSocket: SocketChannel):
         internalSocket.write(bytes)
     }
 
+    override fun toString(): String {
+        return "{$host}"
+    }
 }
 
 interface ISelectionKeyWrapper {

@@ -40,7 +40,7 @@ class BurrowExternalResource: ExternalResource() {
         var socket: Socket? = null
         retry@for (i in 0..30) {
             try {
-                socket = Socket("127.0.0.1", 6788)
+                socket = Socket("127.0.0.1", 6770)
                 break@retry
             } catch (exception: IOException) {
                 Thread.sleep(100)
@@ -53,6 +53,9 @@ class BurrowExternalResource: ExternalResource() {
 
         socket.keepAlive = false
         socket.soTimeout = 1000
+
+        // todo: investigate bug where input is dropped whilst connecting and tracking
+        Thread.sleep(100)
 
         val socketOut = PrintWriter(socket.getOutputStream(), true)
         val socketIn = BufferedReader(InputStreamReader(socket.getInputStream()))

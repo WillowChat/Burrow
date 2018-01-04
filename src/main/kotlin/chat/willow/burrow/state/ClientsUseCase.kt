@@ -3,12 +3,15 @@ package chat.willow.burrow.state
 import chat.willow.burrow.Burrow
 import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.connection.IConnectionTracker
+import chat.willow.burrow.helper.BurrowSchedulers
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.helper.CaseInsensitiveNamedMap
 import chat.willow.kale.helper.INamed
 import io.reactivex.Observable
 import io.reactivex.Observer
+import io.reactivex.Scheduler
+import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 
 interface IClientsUseCase {
@@ -22,7 +25,10 @@ interface IClientsUseCase {
 
 }
 
-class ClientsUseCase(connections: IConnectionTracker, val serverName: INamed, val networkName: INamed): IClientsUseCase {
+class ClientsUseCase(connections: IConnectionTracker,
+                     val serverName: INamed,
+                     val networkName: INamed,
+                     scheduler: Scheduler = BurrowSchedulers.unsharedSingleThread(name = "usecase")): IClientsUseCase {
 
     private val LOGGER = loggerFor<ClientsUseCase>()
 
@@ -38,11 +44,18 @@ class ClientsUseCase(connections: IConnectionTracker, val serverName: INamed, va
     private val clients = CaseInsensitiveNamedMap<ClientTracker.ConnectedClient>(mapper = Burrow.Server.MAPPER)
 
     init {
-        track.subscribe(this::track)
-        drop.subscribe(this::drop)
+        track
+            .observeOn(scheduler)
+            .subscribe(this::track)
+
+        drop
+            .observeOn(scheduler)
+            .subscribe(this::drop)
+
         send
-                .map { it.first.connectionId to it.second }
-                .subscribe(connections.send)
+            .observeOn(scheduler)
+            .map { it.first.connectionId to it.second }
+            .subscribe(connections.send)
     }
 
     private fun track(client: ClientTracker.ConnectedClient) {

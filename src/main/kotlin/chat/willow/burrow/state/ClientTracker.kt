@@ -3,6 +3,7 @@ package chat.willow.burrow.state
 import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.connection.IConnectionTracker
+import chat.willow.burrow.helper.BurrowSchedulers
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.IKale
 import chat.willow.kale.Kale
@@ -13,7 +14,6 @@ import chat.willow.kale.helper.INamed
 import chat.willow.kale.irc.prefix.Prefix
 import io.reactivex.Observer
 import io.reactivex.rxkotlin.subscribeBy
-import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 import java.util.concurrent.ConcurrentHashMap
 
@@ -64,7 +64,7 @@ class ClientTracker(val connections: IConnectionTracker,
 
     private val kales: MutableMap<ConnectionId, IKale> = ConcurrentHashMap()
 
-    private val lineScheduler = Schedulers.single()
+    private val kaleProcessingScheduler = BurrowSchedulers.unsharedSingleThread(name = "kale")
 
     override val track = PublishSubject.create<BurrowConnection>()
     override val drop = PublishSubject.create<ConnectionId>()
@@ -89,7 +89,7 @@ class ClientTracker(val connections: IConnectionTracker,
             // todo: optimise?
             .filter { it.first == connection.id }
             .map { it.second }
-            .observeOn(lineScheduler)
+            .observeOn(kaleProcessingScheduler)
             .subscribe(clientKale.lines)
 
         clientKale.messages

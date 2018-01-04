@@ -40,7 +40,7 @@ class ConnectionTrackerTests {
         preparer = MockConnectionPreparing()
         listener = MockConnectionListening(preparer)
 
-        sut = ConnectionTracker(kale = mockKale, socketScheduler = scheduler)
+        sut = ConnectionTracker(mockKale, scheduler)
         sut.addConnectionListener(listener)
     }
 
@@ -51,6 +51,7 @@ class ConnectionTrackerTests {
         val connection = BurrowConnection(id = 1, primitiveConnection = socket)
 
         listener.acceptedSubject.onNext(IConnectionListening.Accepted(1, socket))
+        scheduler.triggerActions()
         preparer.spyConnections[1] = connection
 
         assertEquals(connection, sut.get(id = 1))
@@ -62,6 +63,7 @@ class ConnectionTrackerTests {
         val connection = BurrowConnection(id = 1, primitiveConnection = socket)
 
         listener.acceptedSubject.onNext(IConnectionListening.Accepted(1, socket))
+        scheduler.triggerActions()
         preparer.spyConnections[1] = connection
 
         val line = "SOME message"
@@ -77,6 +79,7 @@ class ConnectionTrackerTests {
         val observer = sut.dropped.test()
 
         listener.closedSubject.onNext(IConnectionListening.Closed(id = 1))
+        scheduler.triggerActions()
 
         observer.assertValue(ConnectionTracker.Dropped(id = 1))
     }
@@ -86,6 +89,7 @@ class ConnectionTrackerTests {
         whenever(socket.host).thenReturn("somewhere")
         val connection = BurrowConnection(id = 1, primitiveConnection = socket)
         listener.acceptedSubject.onNext(IConnectionListening.Accepted(1, socket))
+        scheduler.triggerActions()
         preparer.spyConnections[1] = connection
 
         sut.drop.onNext(1)

@@ -6,6 +6,8 @@ import chat.willow.burrow.connection.network.INIOWrapper
 import chat.willow.burrow.connection.network.ISelectionKeyWrapper
 import chat.willow.burrow.helper.IInterruptedChecker
 import chat.willow.burrow.helper.loggerFor
+import io.reactivex.Scheduler
+import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
@@ -67,9 +69,9 @@ class NIOSocketListener(private val hostname: String,
         val (socket, clientKey) = nioWrapper.accept(key.original)
 
         val id = idProvider.next()
-        accepted.onNext(IConnectionListening.Accepted(id = id, primitiveConnection = socket))
-
         nioWrapper.attach(id, clientKey)
+
+        accepted.onNext(IConnectionListening.Accepted(id = id, primitiveConnection = socket))
     }
 
     private fun read(key: ISelectionKeyWrapper) {
@@ -86,4 +88,7 @@ class NIOSocketListener(private val hostname: String,
         read.onNext(IConnectionListening.Read(id = id, buffer = incomingBuffer, bytesRead = bytesRead))
     }
 
+    override fun toString(): String {
+        return "NIOSocketListener(host=$hostname, port=$port)"
+    }
 }

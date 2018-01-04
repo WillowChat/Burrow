@@ -18,7 +18,7 @@ interface IPingUseCase {
 
 }
 
-class PingUseCase(private val clients: IClientsUseCase, private val scheduler: Scheduler = Schedulers.computation()): IPingUseCase {
+class PingUseCase(private val clients: IClientsUseCase, private val timerScheduler: Scheduler = Schedulers.computation()): IPingUseCase {
 
     override val timeout = PublishSubject.create<ClientTracker.ConnectedClient>()
 
@@ -33,7 +33,7 @@ class PingUseCase(private val clients: IClientsUseCase, private val scheduler: S
         val clientDropped = clients.dropped.filter { it == client }
 
         val pongResponses = Observable.just(client)
-                .delay(PING_AFTER_SECONDS, TimeUnit.SECONDS, scheduler)
+                .delay(PING_AFTER_SECONDS, TimeUnit.SECONDS, timerScheduler)
                 .flatMap { pingClient(client, token = "bunnies") }
                 .repeat()
                 .takeUntil(clientDropped)
@@ -53,7 +53,7 @@ class PingUseCase(private val clients: IClientsUseCase, private val scheduler: S
                 .observe(PongMessage.Message.Descriptor)
                 .map { it.message.token }
                 .filter { it == token }
-                .timeout(TIMEOUT_AFTER_SECONDS, TimeUnit.SECONDS, scheduler)
+                .timeout(TIMEOUT_AFTER_SECONDS, TimeUnit.SECONDS, timerScheduler)
                 .take(1)
     }
 
