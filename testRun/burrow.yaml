@@ -6,7 +6,10 @@ server:
   motd: motd.yaml
 
   listen:
-  -
-    type: "plaintext"
+  - type: "plaintext"
     host: "127.0.0.1"
     port: 6770
+
+  - type: "haproxy_v2"
+    host: "127.0.0.1"
+    port: 6771
