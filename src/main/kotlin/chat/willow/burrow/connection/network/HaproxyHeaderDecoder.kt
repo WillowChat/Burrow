@@ -18,7 +18,7 @@ class HaproxyHeaderDecoder : IHaproxyHeaderDecoder {
     data class Output(val header: Header, val remainingBytes: ByteArray, val remainingBytesRead: Int)
 
     // todo: everything else - command (health checks), TLSV
-    data class Header(val sourceAddress: String, val sourcePort: Int, val destinationAddress: String, val destinationPort: Int)
+    data class Header(val sourceAddress: InetAddress, val sourcePort: Int, val destinationAddress: InetAddress, val destinationPort: Int)
 
     object NoPrefixException : Exception()
     object PayloadMalformedException : Exception()
@@ -75,10 +75,10 @@ class HaproxyHeaderDecoder : IHaproxyHeaderDecoder {
         val payloadLength = readRemainingPayloadLength(buffer) ?: throw PayloadMalformedException
         val headerLength = payloadLength + 16
 
-        var sourceAddress = ""
-        var destinationAddress = ""
-        var sourcePort = 0
-        var destinationPort = 0
+        val sourceAddress: InetAddress
+        val destinationAddress: InetAddress
+        val sourcePort: Int
+        val destinationPort: Int
 
         // todo: support UNIX sockets
         when (addressFamily) {
@@ -98,6 +98,8 @@ class HaproxyHeaderDecoder : IHaproxyHeaderDecoder {
             }
             3 -> // UNIX - src(1x108) dst(1x108)
                 throw UnixSocketTodoException
+            else ->
+                throw UnsupportedAddressFamily
         }
 
         val header = Header(sourceAddress, sourcePort, destinationAddress, destinationPort)
@@ -142,19 +144,17 @@ class HaproxyHeaderDecoder : IHaproxyHeaderDecoder {
         return buffer.short.toInt() and 0xffff
     }
 
-    private fun readInet4Address(buffer: ByteBuffer): String {
+    private fun readInet4Address(buffer: ByteBuffer): InetAddress {
         val byteBuffer = ByteBuffer.allocate(4)
         (0 until 4).forEach { byteBuffer.put(buffer.get()) }
-        val sourceAddress = InetAddress.getByAddress(byteBuffer.array())
-        return sourceAddress.hostAddress
+        return InetAddress.getByAddress(byteBuffer.array())
     }
 
-    private fun readInet6Address(buffer: ByteBuffer): String {
+    private fun readInet6Address(buffer: ByteBuffer): InetAddress {
         val byteBuffer = ByteBuffer.allocate(16)
         (0 until 16).forEach { byteBuffer.put(buffer.get()) }
 
-        val sourceAddress = Inet6Address.getByAddress(byteBuffer.array())
-        return sourceAddress.hostAddress
+        return Inet6Address.getByAddress(byteBuffer.array())
     }
 
     companion object {

@@ -14,6 +14,7 @@ import io.reactivex.subjects.PublishSubject
 import org.junit.Before
 import org.junit.Test
 import unit.chat.willow.burrow.connection.line.MockLineAccumulator
+import java.net.InetAddress
 import java.nio.ByteBuffer
 
 class HaproxyConnectionPreparingTests {
@@ -47,7 +48,7 @@ class HaproxyConnectionPreparingTests {
     }
 
     @Test fun `if the first input is decodable, with no extra input, connection is added and tracked`() {
-        val header = HaproxyHeaderDecoder.Header("source", 1, "destination", 2)
+        val header = HaproxyHeaderDecoder.Header(stubAddress("source"), 1, stubAddress("destination"), 2)
         val decodeOutput = HaproxyHeaderDecoder.Output(header, remainingBytes = byteArrayOf(), remainingBytesRead = 0)
         whenever(mockDecoder.decode(any())).thenReturn(decodeOutput)
 
@@ -70,7 +71,7 @@ class HaproxyConnectionPreparingTests {
     }
 
     @Test fun `if the first input is decodable, with extra input, input is replayed`() {
-        val header = HaproxyHeaderDecoder.Header("source", 1, "destination", 2)
+        val header = HaproxyHeaderDecoder.Header(stubAddress("source"), 1, stubAddress("destination"), 2)
         val decodeOutput = HaproxyHeaderDecoder.Output(header, remainingBytes = byteArrayOf(0x00, 0x01), remainingBytesRead = 2)
         whenever(mockDecoder.decode(any())).thenReturn(decodeOutput)
 
@@ -90,4 +91,11 @@ class HaproxyConnectionPreparingTests {
         accumulatorInput.assertValue(ILineAccumulator.Input(bytes = byteArrayOf(0x00, 0x01), bytesRead = 2))
     }
 
+}
+
+fun stubAddress(hostname: String): InetAddress {
+    val stubAddress: InetAddress = mock()
+    whenever(stubAddress.hostName).thenReturn(hostname)
+    whenever(stubAddress.canonicalHostName).thenReturn(hostname)
+    return stubAddress
 }

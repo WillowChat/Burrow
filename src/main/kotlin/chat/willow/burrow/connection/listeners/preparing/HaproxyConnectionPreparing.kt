@@ -51,7 +51,7 @@ class HaproxyConnectionPreparing(
         return haproxyFrame
             .map {
                 val primitiveConnection = connection.primitiveConnection
-                primitiveConnection.host = it.header.sourceAddress
+                primitiveConnection.host = it.header.sourceAddress.canonicalHostName
 
                 factory.create(connection.id, primitiveConnection) to it
             }
@@ -121,6 +121,7 @@ class HaproxyConnectionPreparing(
                 )
             }
             .map(decoder::decode)
+            // todo: quieten log output for errors from this stream, whilst still propagating them
     }
 
     private fun accumulateAfterFirstInput(
