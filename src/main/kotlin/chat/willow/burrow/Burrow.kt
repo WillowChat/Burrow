@@ -190,7 +190,7 @@ object Burrow {
                 } catch (exception: Exception) {
                     when (exception) {
                         is InterruptedException -> LOGGER.info("Burrow stopping cleanly")
-                        else -> LOGGER.info("Burrow stopping due to an exception: $exception")
+                        else -> LOGGER.error("Burrow stopping due to an exception", exception)
                     }
                 }
             }

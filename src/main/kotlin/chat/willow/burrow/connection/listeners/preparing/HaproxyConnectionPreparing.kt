@@ -107,7 +107,7 @@ class HaproxyConnectionPreparing(
     ) {
         haproxyFrame
             .subscribeBy(onError = {
-                LOGGER.info("Haproxy frame errored out: $it")
+                LOGGER.warn("Haproxy frame errored out", it)
                 drop.onNext(accepted.id)
                 accepted.primitiveConnection.close()
             })
