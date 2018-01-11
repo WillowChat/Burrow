@@ -43,7 +43,7 @@ class NIOSocketListener(private val hostname: String,
     override fun run() {
         LOGGER.info("Starting...")
 
-        runloop@while (!interruptedChecker.isInterrupted) {
+        while (!interruptedChecker.isInterrupted) {
             val keys = nioWrapper.select()
 
             for (key in keys) {
@@ -60,7 +60,6 @@ class NIOSocketListener(private val hostname: String,
     }
 
     override fun tearDown() {
-        LOGGER.info("Tearing down")
         nioWrapper.tearDown()
     }
 

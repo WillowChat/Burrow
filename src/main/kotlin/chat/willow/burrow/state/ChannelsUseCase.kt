@@ -30,7 +30,8 @@ data class ChannelUser(val prefix: Prefix): INamed {
         get() = prefix.nick
 }
 
-class ChannelsUseCase(val clients: IClientsUseCase, val serverName: INamed): IChannelsUseCase {
+class ChannelsUseCase(private val clients: IClientsUseCase,
+                      private val serverName: INamed): IChannelsUseCase {
 
     private val LOGGER = loggerFor<ChannelsUseCase>()
     private val MAX_CHANNEL_LENGTH = 18 // todo: check

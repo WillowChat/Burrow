@@ -80,8 +80,6 @@ object Burrow {
 
         server.start()
 
-        listeners.forEach(IConnectionListening::tearDown)
-
         LOGGER.info("Ended")
     }
 
@@ -175,6 +173,8 @@ object Burrow {
             }
         }
 
+        private val monitor = java.lang.Object()
+
         fun start() {
             LOGGER.info("Starting listeners...")
 
@@ -182,13 +182,16 @@ object Burrow {
                 it.start()
             }
 
-            runloop@while (!Thread.currentThread().isInterrupted) {
+            synchronized(monitor) {
                 try {
-                    // todo: better way to wait for interruption?
-                    Thread.sleep(100)
+                    while(true) {
+                        monitor.wait()
+                    }
                 } catch (exception: Exception) {
-                    LOGGER.info("Burrow stopping after being interrupted")
-                    break@runloop
+                    when (exception) {
+                        is InterruptedException -> LOGGER.info("Burrow stopping cleanly")
+                        else -> LOGGER.info("Burrow stopping due to an exception: $exception")
+                    }
                 }
             }
 
