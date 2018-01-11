@@ -34,8 +34,10 @@ class HaproxyConnectionPreparing(
 
         LOGGER.info("Waiting for haproxy frame...")
 
-        val haproxyFrame = decodeFirstInput(input).share()
-        dropIfFrameFailedToDecode(haproxyFrame, drop, connection)
+        val maybeHaproxyFrame = decodeFirstInput(input)
+        dropIfFrameFailedToDecode(maybeHaproxyFrame, drop, connection)
+
+        val haproxyFrame = maybeHaproxyFrame.onErrorResumeNext(Observable.empty())
 
         val newConnection = makeBurrowConnection(haproxyFrame, connection).share()
         addNewConnection(newConnection, connections, connection)
@@ -121,7 +123,6 @@ class HaproxyConnectionPreparing(
                 )
             }
             .map(decoder::decode)
-            // todo: quieten log output for errors from this stream, whilst still propagating them
     }
 
     private fun accumulateAfterFirstInput(
