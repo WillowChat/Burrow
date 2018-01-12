@@ -41,7 +41,7 @@ class HaproxyConnectionPreparingTests {
         val drop = PublishSubject.create<ConnectionId>().test()
         val connections = mutableMapOf<ConnectionId, BurrowConnection>()
         sut.prepare(input, accumulator, connection, tracked, drop, connections)
-        input.onNext(IConnectionListening.Read(id = 1, buffer = ByteBuffer.allocate(1), bytesRead = 1))
+        input.onNext(IConnectionListening.Read(id = 1, bytes = byteArrayOf(0x00)))
 
         tracked.assertEmpty()
         drop.assertValues(1)
@@ -63,7 +63,7 @@ class HaproxyConnectionPreparingTests {
         val drop = PublishSubject.create<ConnectionId>().test()
         val connections = mutableMapOf<ConnectionId, BurrowConnection>()
         sut.prepare(input, accumulator, connection, tracked, drop, connections)
-        input.onNext(IConnectionListening.Read(id = 1, buffer = ByteBuffer.allocate(1), bytesRead = 1))
+        input.onNext(IConnectionListening.Read(id = 1, bytes = byteArrayOf(0x00)))
 
         drop.assertEmpty()
         tracked.assertValue(ConnectionTracker.Tracked(burrowConnection))
@@ -86,7 +86,7 @@ class HaproxyConnectionPreparingTests {
         val drop = PublishSubject.create<ConnectionId>().test()
         val connections = mutableMapOf<ConnectionId, BurrowConnection>()
         sut.prepare(input, accumulator, connection, tracked, drop, connections)
-        input.onNext(IConnectionListening.Read(id = 1, buffer = ByteBuffer.allocate(1), bytesRead = 1))
+        input.onNext(IConnectionListening.Read(id = 1, bytes = byteArrayOf(0x00)))
 
         accumulatorInput.assertValue(ILineAccumulator.Input(bytes = byteArrayOf(0x00, 0x01), bytesRead = 2))
     }

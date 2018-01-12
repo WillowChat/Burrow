@@ -12,6 +12,7 @@ import chat.willow.kale.KaleRouter
 import chat.willow.kale.core.tag.KaleTagRouter
 import chat.willow.kale.helper.INamed
 import chat.willow.kale.irc.prefix.Prefix
+import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.rxkotlin.subscribeBy
 import io.reactivex.subjects.PublishSubject
@@ -69,10 +70,14 @@ class ClientTracker(val connections: IConnectionTracker,
     override val track = PublishSubject.create<BurrowConnection>()
     override val drop = PublishSubject.create<ConnectionId>()
 
+    private val sharedReads: Observable<Pair<ConnectionId, String>>
+
     init {
         track.subscribe(this::track)
         drop.subscribe(this::drop)
         drop.subscribe(clientsUseCase.drop)
+
+        sharedReads = connections.read.share()
     }
 
     private fun track(connection: BurrowConnection) {
@@ -85,7 +90,7 @@ class ClientTracker(val connections: IConnectionTracker,
         val clientKale = kaleFactory.create()
         kales += connection.id to clientKale
 
-        connections.read
+        sharedReads
             // todo: optimise?
             .filter { it.first == connection.id }
             .map { it.second }

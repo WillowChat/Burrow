@@ -36,7 +36,7 @@ object Burrow {
 
     @JvmStatic fun main(args: Array<String>) {
         LOGGER.info("Starting...")
-        LOGGER.info("Support the development of this daemon through Patreon https://crrt.io/patreon 🎉")
+        LOGGER.info("Support the development of this IRC server through Patreon https://crrt.io/patreon 🎉")
 
         if (!args.isEmpty()) {
             LOGGER.warn("Configuration of Burrow is done by editing `burrow.yaml` (don't pass program arguments)")

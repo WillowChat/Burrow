@@ -2,6 +2,7 @@ package unit.chat.willow.burrow.connection.network
 
 import chat.willow.burrow.connection.IConnectionIdProvider
 import chat.willow.burrow.connection.IPrimitiveConnection
+import chat.willow.burrow.connection.listeners.IConnectionListening
 import chat.willow.burrow.connection.listeners.NIOSocketListener
 import chat.willow.burrow.connection.listeners.preparing.IConnectionPreparing
 import chat.willow.burrow.connection.network.INIOWrapper
@@ -20,14 +21,14 @@ class NIOSocketListenerTests {
 
     private lateinit var sut: NIOSocketListener
     private lateinit var mockNioWrapper: INIOWrapper
-    private lateinit var mockIncomingBuffer: ByteBuffer
+    private lateinit var incomingBuffer: ByteBuffer
     private lateinit var mockInterruptedChecker: IInterruptedChecker
     private lateinit var mockIdProvider: IConnectionIdProvider
     private lateinit var mockConnectionPreparing: IConnectionPreparing
 
     @Before fun setUp() {
         mockNioWrapper = mock()
-        mockIncomingBuffer = mock()
+        incomingBuffer = ByteBuffer.allocate(10)
         mockInterruptedChecker = mock()
         mockIdProvider = mock()
         mockConnectionPreparing = mock()
@@ -36,7 +37,7 @@ class NIOSocketListenerTests {
             "",
             0,
             mockNioWrapper,
-            mockIncomingBuffer,
+            incomingBuffer,
             mockInterruptedChecker,
             mockIdProvider,
             mockConnectionPreparing
@@ -123,29 +124,32 @@ class NIOSocketListenerTests {
 
         sut.run()
 
-        verify(mockNioWrapper).read(originalKey, mockIncomingBuffer)
+        verify(mockNioWrapper).read(originalKey, incomingBuffer)
     }
 
-    @Test fun `when run, and there is a readable key, and meq 0 bytes to read, passes buffer and bytes read to delegate`() {
-        val readableKey: ISelectionKeyWrapper = mock()
-        val originalKey: SelectionKey = mock()
-        whenever(readableKey.original).thenReturn(originalKey)
-
-        whenever(readableKey.isReadable).thenReturn(true)
-
-        whenever(mockInterruptedChecker.isInterrupted)
-                .thenReturn(false)
-                .thenReturn(true)
-        whenever(mockNioWrapper.select())
-                .thenReturn(mutableSetOf(readableKey))
-
-        whenever(mockNioWrapper.read(any(), any()))
-                .thenReturn(10 to 1)
-
-        sut.start()
-
-//        verify(mockDelegate).onRead(1, mockIncomingBuffer, 10)
-    }
+//    @Test fun `when run, and there is a readable key, and meq 0 bytes to read, passes buffer and bytes read to delegate`() {
+//        val readableKey: ISelectionKeyWrapper = mock()
+//        val originalKey: SelectionKey = mock()
+//        whenever(readableKey.original).thenReturn(originalKey)
+//
+//        whenever(readableKey.isReadable).thenReturn(true)
+//
+//        whenever(mockInterruptedChecker.isInterrupted)
+//                .thenReturn(false)
+//                .thenReturn(true)
+//        whenever(mockNioWrapper.select())
+//                .thenReturn(mutableSetOf(readableKey))
+//
+//        whenever(mockNioWrapper.read(any(), any()))
+//                .thenReturn(10 to 1)
+//
+//        val readTest = sut.read.test()
+//        sut.start()
+//
+//        // todo: encapsulate threading so this test can run
+//
+//        readTest.assertValue(IConnectionListening.Read(id = 1, bytes = byteArrayOf(0x00)))
+//    }
 
     @Test fun `when run, and there is a readable key, and less than 0 bytes to read, tells nio to close key`() {
         val readableKey: ISelectionKeyWrapper = mock()

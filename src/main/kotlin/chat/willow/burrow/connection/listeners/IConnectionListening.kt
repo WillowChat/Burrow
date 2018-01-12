@@ -7,7 +7,7 @@ import io.reactivex.Observable
 import java.nio.ByteBuffer
 
 interface IConnectionListening: IConnectionPreparing {
-    data class Read(val id: ConnectionId, val buffer: ByteBuffer, val bytesRead: Int)
+    data class Read(val id: ConnectionId, val bytes: ByteArray)
     data class Accepted(val id: ConnectionId, val primitiveConnection: IPrimitiveConnection)
     data class Closed(val id: ConnectionId)
 

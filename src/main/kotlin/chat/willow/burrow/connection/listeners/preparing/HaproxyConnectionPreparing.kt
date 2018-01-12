@@ -118,8 +118,8 @@ class HaproxyConnectionPreparing(
             .take(1)
             .map {
                 HaproxyHeaderDecoder.Input(
-                    bytes = it.buffer.array(),
-                    bytesRead = it.bytesRead
+                    bytes = it.bytes,
+                    bytesRead = it.bytes.size
                 )
             }
             .map(decoder::decode)
@@ -133,8 +133,8 @@ class HaproxyConnectionPreparing(
             .skip(1)
             .map {
                 ILineAccumulator.Input(
-                    bytes = it.buffer.array(),
-                    bytesRead = it.bytesRead
+                    bytes = it.bytes,
+                    bytesRead = it.bytes.size
                 )
             }
             .subscribe(accumulator.input)

@@ -1,10 +1,8 @@
 package functional.chat.willow.burrow
 
-import chat.willow.burrow.connection.network.HaproxyHeaderDecoder
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
-import java.nio.ByteBuffer
 
 class SanityFunctionalTests {
 
@@ -56,6 +54,40 @@ class SanityFunctionalTests {
 
         val response = socket.input.readLine()
         assertEquals(":🐰 001 someone_ :Welcome to Burrow Tests", response)
+    }
+
+    @Test fun `register 500 plaintext clients in parallel`() {
+        val numberOfClients = 500
+        val list = (0 until numberOfClients).toList().parallelStream()
+
+        // todo: try coroutines
+
+        list.forEach {
+            val socket = burrow.socket()
+
+            socket.output.println("NICK someone$it")
+            socket.output.println("USER 1 2 3 4")
+
+            val response = socket.input.readLine()
+            assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
+        }
+    }
+
+    @Test fun `register 500 haproxy clients in parallel`() {
+        val numberOfClients = 500
+        val list = (0 until numberOfClients).toList().parallelStream()
+
+        // todo: try coroutines
+
+        list.forEach {
+            val socket = burrow.haproxySocket()
+
+            socket.output.println("NICK someone$it")
+            socket.output.println("USER 1 2 3 4")
+
+            val response = socket.input.readLine()
+            assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
+        }
     }
 
 }

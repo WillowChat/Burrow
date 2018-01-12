@@ -84,7 +84,9 @@ class NIOSocketListener(private val hostname: String,
             return
         }
 
-        read.onNext(IConnectionListening.Read(id = id, buffer = incomingBuffer, bytesRead = bytesRead))
+        // bugfix: intentional copy - can't share buffer without being extremely sure where it is cleared and reused
+        val bytes = incomingBuffer.array().copyOfRange(0, bytesRead)
+        read.onNext(IConnectionListening.Read(id = id, bytes = bytes))
     }
 
     override fun toString(): String {

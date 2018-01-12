@@ -26,8 +26,8 @@ class PlainConnectionPreparing(private val factory: IBurrowConnectionFactory) :
         input
             .map {
                 ILineAccumulator.Input(
-                    bytes = it.buffer.array(),
-                    bytesRead = it.bytesRead
+                    bytes = it.bytes,
+                    bytesRead = it.bytes.size
                 )
             }
             .subscribe(accumulator.input)
