@@ -15,7 +15,6 @@ import org.junit.Before
 import org.junit.Test
 import unit.chat.willow.burrow.connection.line.MockLineAccumulator
 import java.net.InetAddress
-import java.nio.ByteBuffer
 
 class HaproxyConnectionPreparingTests {
 

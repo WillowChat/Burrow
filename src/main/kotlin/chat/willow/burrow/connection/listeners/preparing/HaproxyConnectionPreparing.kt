@@ -5,7 +5,6 @@ import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.connection.ConnectionTracker
 import chat.willow.burrow.connection.IBurrowConnectionFactory
 import chat.willow.burrow.connection.line.ILineAccumulator
-import chat.willow.burrow.connection.line.LineAccumulator
 import chat.willow.burrow.connection.listeners.IConnectionListening
 import chat.willow.burrow.connection.network.HaproxyHeaderDecoder
 import chat.willow.burrow.connection.network.IHaproxyHeaderDecoder

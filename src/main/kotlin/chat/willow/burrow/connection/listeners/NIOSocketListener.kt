@@ -6,8 +6,6 @@ import chat.willow.burrow.connection.network.INIOWrapper
 import chat.willow.burrow.connection.network.ISelectionKeyWrapper
 import chat.willow.burrow.helper.IInterruptedChecker
 import chat.willow.burrow.helper.loggerFor
-import io.reactivex.Scheduler
-import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer

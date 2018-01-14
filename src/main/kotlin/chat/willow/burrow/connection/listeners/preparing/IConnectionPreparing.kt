@@ -4,7 +4,6 @@ import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.connection.ConnectionTracker
 import chat.willow.burrow.connection.line.ILineAccumulator
-import chat.willow.burrow.connection.line.LineAccumulator
 import chat.willow.burrow.connection.listeners.IConnectionListening
 import io.reactivex.Observable
 import io.reactivex.Observer

@@ -2,7 +2,6 @@ package unit.chat.willow.burrow.connection.network
 
 import chat.willow.burrow.connection.IConnectionIdProvider
 import chat.willow.burrow.connection.IPrimitiveConnection
-import chat.willow.burrow.connection.listeners.IConnectionListening
 import chat.willow.burrow.connection.listeners.NIOSocketListener
 import chat.willow.burrow.connection.listeners.preparing.IConnectionPreparing
 import chat.willow.burrow.connection.network.INIOWrapper

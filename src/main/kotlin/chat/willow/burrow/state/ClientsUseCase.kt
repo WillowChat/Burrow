@@ -11,7 +11,6 @@ import chat.willow.kale.helper.INamed
 import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.Scheduler
-import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 
 interface IClientsUseCase {
