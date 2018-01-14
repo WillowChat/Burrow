@@ -23,10 +23,6 @@ class HaproxyConnectionPreparing(
     IConnectionPreparing {
 
     private val LOGGER = loggerFor<HaproxyConnectionPreparing>()
-    private val timerScheduler = Schedulers.computation()
-    private val fakeHostnameLookupScheduler = Schedulers.io()
-
-    private val HOSTNAME_LOOKUP_TIMEOUT_SECONDS: Long = 10
 
     override fun prepare(
         input: Observable<IConnectionListening.Read>,

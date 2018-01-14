@@ -5,6 +5,7 @@ import chat.willow.burrow.Burrow.Validation.nick
 import chat.willow.burrow.connection.BurrowConnection
 import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.connection.IConnectionTracker
+import chat.willow.burrow.helper.BurrowSchedulers
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.IKale
 import chat.willow.kale.generated.KaleNumerics
@@ -17,7 +18,6 @@ import io.reactivex.Observable
 import io.reactivex.Scheduler
 import io.reactivex.rxkotlin.Observables
 import io.reactivex.rxkotlin.withLatestFrom
-import io.reactivex.schedulers.Schedulers
 import java.util.concurrent.TimeUnit
 
 interface IRegistrationUseCase {
@@ -29,7 +29,7 @@ interface IRegistrationUseCase {
 class RegistrationUseCase(private val connections: IConnectionTracker,
                           private val clients: IClientsUseCase,
                           private val serverName: INamed,
-                          private val timerScheduler: Scheduler = Schedulers.computation()): IRegistrationUseCase {
+                          private val timerScheduler: Scheduler = BurrowSchedulers.unsharedSingleThread("registrations")): IRegistrationUseCase {
 
     private val LOGGER = loggerFor<RegistrationUseCase>()
 
