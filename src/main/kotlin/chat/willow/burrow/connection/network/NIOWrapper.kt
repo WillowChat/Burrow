@@ -6,10 +6,7 @@ import java.io.IOException
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
-import java.nio.channels.SelectionKey
-import java.nio.channels.Selector
-import java.nio.channels.ServerSocketChannel
-import java.nio.channels.SocketChannel
+import java.nio.channels.*
 
 class NIOPrimitiveConnection(private val internalSocket: SocketChannel, override var address: InetAddress):
     IPrimitiveConnection {
@@ -41,10 +38,10 @@ interface ISelectionKeyWrapper {
 class SelectionKeyWrapper(override val original: SelectionKey): ISelectionKeyWrapper {
 
     override val isAcceptable: Boolean
-        get() = original.isAcceptable
+        get() = try { original.isAcceptable } catch (exception: CancelledKeyException) { false }
 
     override val isReadable: Boolean
-        get() = original.isReadable
+        get() = try { original.isReadable } catch (exception: CancelledKeyException) { false }
 
 }
 
