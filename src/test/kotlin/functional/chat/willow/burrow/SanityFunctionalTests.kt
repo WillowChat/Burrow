@@ -101,10 +101,7 @@ class SanityFunctionalTests {
         // todo: try coroutines
 
         list.forEach {
-            val socket = burrow.haproxySocket()
-
-            socket.output.println("NICK someone$it")
-            socket.output.println("USER 1 2 3 4")
+            val socket = burrow.haproxySocket("NICK someone$it\r\nUSER 1 2 3 4\r\n".toByteArray())
 
             val response = socket.input.readLine()
             socket.socket.close()
@@ -119,10 +116,7 @@ class SanityFunctionalTests {
         // todo: try coroutines
 
         list.forEach {
-            val socket = burrow.haproxySocket()
-
-            socket.output.println("NICK someone$it")
-            socket.output.println("USER 1 2 3 4")
+            val socket = burrow.haproxySocket("NICK someone$it\r\nUSER 1 2 3 4\r\n".toByteArray())
 
             val response = socket.input.readLine()
             socket.socket.close()
