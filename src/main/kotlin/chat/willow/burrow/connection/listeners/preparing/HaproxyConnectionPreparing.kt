@@ -11,6 +11,7 @@ import chat.willow.burrow.connection.network.IHaproxyHeaderDecoder
 import chat.willow.burrow.helper.loggerFor
 import io.reactivex.Observable
 import io.reactivex.Observer
+import io.reactivex.Scheduler
 import io.reactivex.rxkotlin.Observables
 import io.reactivex.rxkotlin.subscribeBy
 import io.reactivex.schedulers.Schedulers
@@ -18,7 +19,8 @@ import io.reactivex.schedulers.Schedulers
 class HaproxyConnectionPreparing(
     private val factory: IBurrowConnectionFactory,
     private val decoder: IHaproxyHeaderDecoder,
-    private val hostnameLookupUseCase: IHostLookupUseCase
+    private val hostnameLookupUseCase: IHostLookupUseCase,
+    private val lookupScheduler: Scheduler = Schedulers.io()
 ) :
     IConnectionPreparing {
 
@@ -55,6 +57,7 @@ class HaproxyConnectionPreparing(
         connection: IConnectionListening.Accepted
     ): Observable<Pair<BurrowConnection, HaproxyHeaderDecoder.Output>> {
         val hostnameLookup = haproxyFrame
+            .observeOn(lookupScheduler)
             .flatMap { hostnameLookupUseCase.lookUp(it.header.sourceAddress, default = it.header.sourceAddress.hostAddress)}
 
         return Observables.combineLatest(haproxyFrame, hostnameLookup) { frame, hostname -> (frame to hostname) }
@@ -91,10 +94,8 @@ class HaproxyConnectionPreparing(
         tracked: Observer<ConnectionTracker.Tracked>
     ) {
         newConnection
-            .subscribe {
-                tracked.onNext(ConnectionTracker.Tracked(it.first))
-                LOGGER.info("Tracked connection ${it.first}")
-            }
+            .map { ConnectionTracker.Tracked(it.first) }
+            .subscribe(tracked::onNext)
     }
 
     private fun addNewConnection(

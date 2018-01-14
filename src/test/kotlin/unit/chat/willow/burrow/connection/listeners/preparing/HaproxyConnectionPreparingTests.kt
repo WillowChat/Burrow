@@ -12,6 +12,8 @@ import com.nhaarman.mockito_kotlin.any
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.whenever
 import io.reactivex.Observable
+import io.reactivex.Scheduler
+import io.reactivex.schedulers.TestScheduler
 import io.reactivex.subjects.PublishSubject
 import org.junit.Before
 import org.junit.Test
@@ -25,6 +27,7 @@ class HaproxyConnectionPreparingTests {
     lateinit var mockFactory: IBurrowConnectionFactory
     lateinit var mockDecoder: IHaproxyHeaderDecoder
     lateinit var mockHostnameLookup: IHostLookupUseCase
+    lateinit var lookupScheduler: TestScheduler
 
     @Before fun setUp() {
         mockFactory = mock()
@@ -32,7 +35,9 @@ class HaproxyConnectionPreparingTests {
         mockHostnameLookup = mock()
         whenever(mockHostnameLookup.lookUp(any(), any())).thenReturn(Observable.just("somewhere"))
 
-        sut = HaproxyConnectionPreparing(mockFactory, mockDecoder, mockHostnameLookup)
+        lookupScheduler = TestScheduler()
+
+        sut = HaproxyConnectionPreparing(mockFactory, mockDecoder, mockHostnameLookup, lookupScheduler)
     }
 
     @Test fun `if the first input is not decodable, connection is dropped`() {
@@ -68,6 +73,7 @@ class HaproxyConnectionPreparingTests {
         val connections = mutableMapOf<ConnectionId, BurrowConnection>()
         sut.prepare(input, accumulator, connection, tracked, drop, connections)
         input.onNext(IConnectionListening.Read(id = 1, bytes = byteArrayOf(0x00)))
+        lookupScheduler.triggerActions()
 
         drop.assertEmpty()
         tracked.assertValue(ConnectionTracker.Tracked(burrowConnection))
@@ -91,6 +97,7 @@ class HaproxyConnectionPreparingTests {
         val connections = mutableMapOf<ConnectionId, BurrowConnection>()
         sut.prepare(input, accumulator, connection, tracked, drop, connections)
         input.onNext(IConnectionListening.Read(id = 1, bytes = byteArrayOf(0x00)))
+        lookupScheduler.triggerActions()
 
         accumulatorInput.assertValue(ILineAccumulator.Input(bytes = byteArrayOf(0x00, 0x01), bytesRead = 2))
     }

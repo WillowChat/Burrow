@@ -92,13 +92,11 @@ class ClientTracker(val connections: IConnectionTracker,
             .subscribe(clientKale.lines)
 
         clientKale.messages
-            .observeOn(clientsScheduler)
             .map { "${connection.id} ~ >> ${it.message}" }
             .subscribe(LOGGER::debug)
 
         val registration = registrationUseCase
                 .track(clientKale, supportedCaps, connection = connection)
-                .observeOn(clientsScheduler)
                 .takeUntil(connections.dropped.filter { it.id == connection.id })
                 .map { registered(connection, details = it, kale = clientKale) }
                 .share()

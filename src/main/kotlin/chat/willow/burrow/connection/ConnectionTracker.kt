@@ -12,6 +12,7 @@ import chat.willow.kale.irc.message.IrcMessageSerialiser
 import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.Scheduler
+import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 import io.reactivex.subjects.ReplaySubject
 import java.util.concurrent.ConcurrentHashMap
@@ -97,8 +98,8 @@ class ConnectionTracker(
                 LOGGER.debug("Connection accepted - ${accepted.id}")
             }
 
-            listener.accepted
-                .subscribe { track(listener, it) }
+        listener.accepted
+            .subscribe { track(listener, it) }
 
         listener.closed
             .observeOn(scheduler)
@@ -118,7 +119,15 @@ class ConnectionTracker(
         val reads = socketReads[accepted.id] ?: throw RuntimeException("Expected read channel to be set up")
         val accumulator = accumulators[accepted.id] ?: throw RuntimeException("Expected accumulator to be set up")
 
-        listener.prepare(reads, accumulator, accepted, tracked, drop, connections)
+        LOGGER.info("Preparing connection ${accepted.id}")
+        val prepareTracked = PublishSubject.create<ConnectionTracker.Tracked>()
+
+        prepareTracked
+            .observeOn(scheduler)
+            .doOnNext { LOGGER.info("Tracked connection ${it.connection.id}") }
+            .subscribe(tracked)
+
+        listener.prepare(reads, accumulator, accepted, prepareTracked, drop, connections)
     }
 
     override fun get(id: ConnectionId): BurrowConnection? {

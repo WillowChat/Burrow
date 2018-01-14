@@ -9,10 +9,13 @@ import chat.willow.burrow.connection.listeners.IConnectionListening
 import chat.willow.burrow.helper.loggerFor
 import io.reactivex.Observable
 import io.reactivex.Observer
+import io.reactivex.Scheduler
+import io.reactivex.schedulers.Schedulers
 
 class PlainConnectionPreparing(
     private val factory: IBurrowConnectionFactory,
-    private val hostnameLookupUseCase: IHostLookupUseCase
+    private val hostnameLookupUseCase: IHostLookupUseCase,
+    private val lookupScheduler: Scheduler = Schedulers.io()
 ) :
     IConnectionPreparing {
 
@@ -36,16 +39,15 @@ class PlainConnectionPreparing(
             .subscribe(accumulator.input::onNext)
 
         hostnameLookupUseCase.lookUp(connection.primitiveConnection.address, connection.primitiveConnection.host)
-            .subscribe {
+            .observeOn(lookupScheduler)
+            .map {
                 val primitiveConnection = connection.primitiveConnection
                 val burrowConnection = factory.create(connection.id, primitiveConnection)
 
                 connections[connection.id] = burrowConnection
 
-                LOGGER.info("Tracked connection $connection")
-                tracked.onNext(ConnectionTracker.Tracked(burrowConnection))
+                ConnectionTracker.Tracked(burrowConnection)
             }
-
-
+            .subscribe(tracked::onNext)
     }
 }
