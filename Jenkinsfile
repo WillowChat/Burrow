@@ -65,7 +65,7 @@ pipeline {
                 sh "find build/libs -name Burrow\\*sources.jar | head -n 1 | xargs -I '{}' mvn install:install-file -Dfile={} -Dclassifier=sources -DpomFile=build/publications/mavenJava/pom-default.xml -DlocalRepositoryPath=/var/www/maven.hopper.bunnies.io"
                 sh "find build/libs -name Burrow\\*all.jar | head -n 1 | xargs -I '{}' docker build -t carrot/burrow-testnet:latest --build-arg jar={} --build-arg config=\"burrow.yaml\" ."
                 sh "docker rm --force burrow-testnet || true"
-                sh "docker run --name burrow-testnet --detach --publish 6660:6660 --publish 6661:6661 carrot/burrow-testnet:latest || true"
+                sh "docker run --name burrow-testnet --network=host --detach carrot/burrow-testnet:latest || true"
             }
         }
     }
