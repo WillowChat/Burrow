@@ -19,7 +19,7 @@ interface IPingUseCase {
 
 }
 
-class PingUseCase(private val clients: IClientsUseCase, private val timerScheduler: Scheduler = BurrowSchedulers.unsharedSingleThread("pings")): IPingUseCase {
+class PingUseCase(private val clients: IClientsUseCase, private val timerScheduler: Scheduler = Schedulers.io()): IPingUseCase {
 
     override val timeout = PublishSubject.create<ClientTracker.ConnectedClient>()
 

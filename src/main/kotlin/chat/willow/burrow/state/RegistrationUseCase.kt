@@ -18,6 +18,7 @@ import io.reactivex.Observable
 import io.reactivex.Scheduler
 import io.reactivex.rxkotlin.Observables
 import io.reactivex.rxkotlin.withLatestFrom
+import io.reactivex.schedulers.Schedulers
 import java.util.concurrent.TimeUnit
 
 interface IRegistrationUseCase {
@@ -29,7 +30,7 @@ interface IRegistrationUseCase {
 class RegistrationUseCase(private val connections: IConnectionTracker,
                           private val clients: IClientsUseCase,
                           private val serverName: INamed,
-                          private val timerScheduler: Scheduler = BurrowSchedulers.unsharedSingleThread("registrations")): IRegistrationUseCase {
+                          private val timerScheduler: Scheduler = Schedulers.io()): IRegistrationUseCase {
 
     private val LOGGER = loggerFor<RegistrationUseCase>()
 
