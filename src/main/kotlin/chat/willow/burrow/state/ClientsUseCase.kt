@@ -43,9 +43,11 @@ class ClientsUseCase(connections: IConnectionTracker,
     private val clients = CaseInsensitiveNamedMap<ClientTracker.ConnectedClient>(mapper = Burrow.Server.MAPPER)
 
     init {
-        track
-            .observeOn(scheduler)
-            .subscribe(this::track)
+        val sharedTrack = track.observeOn(scheduler)
+            .doOnNext { LOGGER.info("track value $it") }
+            .doOnComplete { LOGGER.info("completed")}
+            .share()
+        setUpTracking(sharedTrack)
 
         drop
             .observeOn(scheduler)
@@ -54,19 +56,25 @@ class ClientsUseCase(connections: IConnectionTracker,
         send
             .observeOn(scheduler)
             .map { it.first.connectionId to it.second }
-            .subscribe(connections.send)
+            .subscribe(connections.send::onNext)
     }
 
-    private fun track(client: ClientTracker.ConnectedClient) {
+    private fun setUpTracking(observable: Observable<ClientTracker.ConnectedClient>) {
         val message = "Welcome to ${networkName.name}"
-        send.onNext(client to KaleNumerics.WELCOME.Message(source = serverName.name, target = client.prefix.nick, content = message))
+        observable.map {
+                it to KaleNumerics.WELCOME.Message(source = serverName.name, target = it.prefix.nick, content = message)
+            }
+            .subscribe(send)
 
-        ping.track(client)
-        channels.track(client)
-        channelMessages.track(client)
+        observable.subscribe(ping::track)
+        observable.subscribe(channels::track)
+        observable.subscribe(channelMessages::track)
 
-        clients += client
-        LOGGER.info("tracked client ${client.connectionId}")
+        observable.subscribe {
+            clients += it
+            LOGGER.info("Tracked client ${it.connectionId}")
+        }
+
     }
 
     override fun lookUpClient(nick: String): ClientTracker.ConnectedClient? {

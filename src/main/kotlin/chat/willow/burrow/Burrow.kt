@@ -70,11 +70,11 @@ object Burrow {
 
         connectionTracker.tracked
                 .map { it.connection }
-                .subscribe(clientTracker.track)
+                .subscribe(clientTracker.track::onNext)
 
         connectionTracker.dropped
                 .map { it.id }
-                .subscribe(clientTracker.drop)
+                .subscribe(clientTracker.drop::onNext)
 
         val server = Server(listeners)
 

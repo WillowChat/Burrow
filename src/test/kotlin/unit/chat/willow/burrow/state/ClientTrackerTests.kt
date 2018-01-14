@@ -13,10 +13,10 @@ import com.nhaarman.mockito_kotlin.any
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.verify
 import com.nhaarman.mockito_kotlin.whenever
+import io.reactivex.schedulers.TestScheduler
 import io.reactivex.subjects.PublishSubject
 import org.junit.Before
 import org.junit.Test
-import org.mockito.ArgumentMatchers.anyInt
 
 class ClientTrackerTests {
 
@@ -34,6 +34,7 @@ class ClientTrackerTests {
     private var dropped = PublishSubject.create<ConnectionTracker.Dropped>()
 
     private lateinit var track: PublishSubject<RegistrationUseCase.Registered>
+    private lateinit var scheduler: TestScheduler
 
     @Before fun setUp() {
         mockConnectionTracker = mock()
@@ -58,13 +59,15 @@ class ClientTrackerTests {
         track = PublishSubject.create<RegistrationUseCase.Registered>()
         whenever(mockRegistration.track(any(), any(), any())).thenReturn(track)
 
-        sut = ClientTracker(mockConnectionTracker, mockRegistration, mockClientsUseCase, mockKaleFactory, supportedCaps = mapOf("something" to null))
+        scheduler = TestScheduler()
+        sut = ClientTracker(mockConnectionTracker, mockRegistration, mockClientsUseCase, mockKaleFactory, supportedCaps = mapOf("something" to null), clientsScheduler = scheduler)
     }
 
     @Test fun `when a client is tracked, we track them with the registration use case`() {
         val connection = BurrowConnection(id = 1, primitiveConnection = mock())
 
         sut.track.onNext(connection)
+        scheduler.triggerActions()
 
         verify(mockRegistration).track(mockKale, mapOf("something" to null), connection)
     }
@@ -77,6 +80,7 @@ class ClientTrackerTests {
 
         val observer = drop.test()
         track.onError(RuntimeException("intentional failure"))
+        scheduler.triggerActions()
 
         observer.assertValue(1)
     }

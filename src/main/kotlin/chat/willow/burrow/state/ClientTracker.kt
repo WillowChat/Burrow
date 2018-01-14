@@ -14,6 +14,7 @@ import chat.willow.kale.helper.INamed
 import chat.willow.kale.irc.prefix.Prefix
 import io.reactivex.Observable
 import io.reactivex.Observer
+import io.reactivex.Scheduler
 import io.reactivex.rxkotlin.subscribeBy
 import io.reactivex.subjects.PublishSubject
 import java.util.concurrent.ConcurrentHashMap
@@ -43,7 +44,8 @@ class ClientTracker(val connections: IConnectionTracker,
                     val registrationUseCase: IRegistrationUseCase,
                     val clientsUseCase: IClientsUseCase,
                     val kaleFactory: IKaleFactory = KaleFactory,
-                    val supportedCaps: Map<String, String?>): IClientTracker {
+                    val supportedCaps: Map<String, String?>,
+                    val clientsScheduler: Scheduler = BurrowSchedulers.unsharedSingleThread(name = "clients")): IClientTracker {
 
     private val LOGGER = loggerFor<ClientTracker>()
 
@@ -65,15 +67,13 @@ class ClientTracker(val connections: IConnectionTracker,
 
     private val kales: MutableMap<ConnectionId, IKale> = ConcurrentHashMap()
 
-    private val kaleProcessingScheduler = BurrowSchedulers.unsharedSingleThread(name = "kale")
-
     override val track = PublishSubject.create<BurrowConnection>()
     override val drop = PublishSubject.create<ConnectionId>()
 
     init {
         track.subscribe(this::track)
-        drop.subscribe(this::drop)
-        drop.subscribe(clientsUseCase.drop)
+        drop.observeOn(clientsScheduler).subscribe(this::drop)
+        drop.subscribe(clientsUseCase.drop::onNext)
     }
 
     private fun track(connection: BurrowConnection) {
@@ -81,44 +81,52 @@ class ClientTracker(val connections: IConnectionTracker,
             throw RuntimeException("Tried to track connection $connection with duplicate ID")
         }
 
-        val lines = connections.lineReads[connection.id] ?: throw RuntimeException("Expected lines to be set up")
-
         registeringClients += connection.id to RegisteringClient(connection)
 
         val clientKale = kaleFactory.create()
         kales += connection.id to clientKale
 
+        val lines = connections.lineReads[connection.id] ?: throw RuntimeException("Expected lines to be set up")
+
         lines
-            .observeOn(kaleProcessingScheduler)
+            .doOnNext { LOGGER.info("line $it") }
+            .doOnComplete { LOGGER.info("lines completed ${connection.id}") }
+            .observeOn(clientsScheduler)
             .subscribe(clientKale.lines)
 
         clientKale.messages
+            .observeOn(clientsScheduler)
             .map { "${connection.id} ~ >> ${it.message}" }
             .subscribe(LOGGER::debug)
 
-        registrationUseCase
+        val registration = registrationUseCase
                 .track(clientKale, supportedCaps, connection = connection)
+                .observeOn(clientsScheduler)
                 .takeUntil(connections.dropped.filter { it.id == connection.id })
-                .subscribeBy(onNext = {
-                    registered(connection, details = it, kale = clientKale)
-                },
+                .map { registered(connection, details = it, kale = clientKale) }
+                .share()
+
+        registration
+            .subscribe(clientsUseCase.track::onNext) // todo: value only?
+
+        registration.subscribeBy(
                 onError = {
                     registrationFailed(connection, it)
                 },
                 onComplete = {
-                    LOGGER.info("registration completed for connection ${connection.id}")
+                    LOGGER.info("Registration onComplete ${connection.id}")
                 })
 
-        LOGGER.info("tracked registering client $connection")
+        LOGGER.info("Waiting for client to register: ${connection.id}")
     }
 
     private fun registrationFailed(connection: BurrowConnection, error: Throwable) {
-        LOGGER.info("onnection failed to register, dropping ${connection.id} $error")
+        LOGGER.info("Connection failed to register, dropping ${connection.id} $error")
         drop(connection.id)
         connections.drop.onNext(connection.id)
     }
 
-    private fun registered(connection: BurrowConnection, details: RegistrationUseCase.Registered, kale: IKale) {
+    private fun registered(connection: BurrowConnection, details: RegistrationUseCase.Registered, kale: IKale): ConnectedClient {
         val client = ConnectedClient(connection, kale = kale, prefix = details.prefix)
 
         registeringClients -= connection.id
@@ -126,8 +134,7 @@ class ClientTracker(val connections: IConnectionTracker,
 
         LOGGER.info("connection $connection registered: $details")
 
-        clientsUseCase.track
-            .onNext(client)
+        return client
     }
 
     private fun drop(id: ConnectionId) {

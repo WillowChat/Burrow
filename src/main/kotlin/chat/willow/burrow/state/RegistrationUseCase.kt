@@ -40,7 +40,7 @@ class RegistrationUseCase(private val connections: IConnectionTracker,
     private val TIMEOUT_SECONDS: Long = 20
 
     override fun track(kale: IKale, caps: Map<String, String?>, connection: BurrowConnection): Observable<Registered> {
-        val users = kale.observe(UserMessage.Command.Descriptor).share()
+        val users = kale.observe(UserMessage.Command.Descriptor)
         val nicks = kale.observe(NickMessage.Command.Descriptor).share()
 
         val validatedUsers = users.map { it.message.username to validateUser(it.message.username) }

@@ -30,7 +30,7 @@ class PlainConnectionPreparing(private val factory: IBurrowConnectionFactory) :
                     bytesRead = it.bytes.size
                 )
             }
-            .subscribe(accumulator.input)
+            .subscribe(accumulator.input::onNext)
 
         val primitiveConnection = connection.primitiveConnection
         val burrowConnection = factory.create(connection.id, primitiveConnection)

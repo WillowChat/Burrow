@@ -75,7 +75,7 @@ class HaproxyConnectionPreparing(
                 Observable.empty()
             }
         }
-        .subscribe(accumulator.input)
+        .subscribe(accumulator.input::onNext)
     }
 
     private fun trackNewConnection(
@@ -138,6 +138,6 @@ class HaproxyConnectionPreparing(
                     bytesRead = it.bytes.size
                 )
             }
-            .subscribe(accumulator.input)
+            .subscribe(accumulator.input::onNext)
     }
 }

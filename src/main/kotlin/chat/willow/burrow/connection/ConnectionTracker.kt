@@ -68,45 +68,63 @@ class ConnectionTracker(
             .subscribe {
                 this.send(it.first, it.second)
             }
+
+        tracked.doOnComplete { LOGGER.info("tracked onComplete") }
     }
 
     override fun addConnectionListener(listener: IConnectionListening) {
         LOGGER.info("Adding listener: $listener")
 
         listener.accepted
-            .doOnNext { accepted ->
+            .subscribe { accepted ->
                 val readStream = PublishSubject.create<IConnectionListening.Read>()
                 socketReads += accepted.id to readStream
 
+                readStream
+                    .doOnNext { LOGGER.info("read onNext $it") }
+                    .doOnComplete { LOGGER.info("read stream completed ${accepted.id}") }
+                    .subscribe()
+
                 val lineReadStream = PublishSubject.create<String>()
-                lineReads += accepted.id to lineReadStream
+                lineReads += accepted.id to lineReadStream.cache()
+
+                lineReadStream
+                    .doOnNext { LOGGER.info("lineRead onNext $it") }
+                    .doOnComplete { LOGGER.info("lineRead stream completed ${accepted.id}") }
+                    .subscribe()
 
                 val accumulator = LineAccumulator(bufferSize = MAX_LINE_LENGTH)
-
-                accumulator.lines
-                    .subscribe(lineReadStream)
-
                 accumulators += accepted.id to accumulator
 
+                accumulator.lines
+                    .doOnSubscribe { LOGGER.info("accumulatorLines onSubscribe") }
+                    .doOnComplete { LOGGER.info("accumulatorLines onComplete") }
+                    .subscribe(lineReadStream::onNext)
+
                 listener.read
+                    .doOnComplete { LOGGER.info("listener read onComplete ${accepted.id}") }
                     .filter { it.id == accepted.id }
-                    .subscribe(readStream)
+                    .doOnNext { LOGGER.info("listener read onNext $it") }
+                    .subscribe(readStream::onNext)
 
                 LOGGER.debug("Connection accepted - ${accepted.id}")
             }
-            .subscribe { track(listener, it) }
+
+            listener.accepted
+                .subscribe { track(listener, it) }
 
         listener.closed
             .observeOn(scheduler)
-            .subscribe {
+            .doOnNext {
                 LOGGER.info("Connection ${it.id} closed - dropping")
-                drop.onNext(it.id)
             }
+            .map { it.id }
+            .subscribe(drop::onNext)
 
         listener.closed
             .observeOn(scheduler)
             .map { Dropped(id = it.id) }
-            .subscribe(dropped)
+            .subscribe(dropped::onNext)
     }
 
     private fun track(listener: IConnectionListening, accepted: IConnectionListening.Accepted) {
