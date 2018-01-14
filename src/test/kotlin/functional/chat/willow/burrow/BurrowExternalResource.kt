@@ -50,7 +50,6 @@ class BurrowExternalResource: ExternalResource() {
             throw IllegalStateException("Couldn't connect to Burrow")
         }
 
-        socket.keepAlive = false
         socket.soTimeout = 2000
 
         val rawOut = socket.getOutputStream()
@@ -76,6 +75,7 @@ class BurrowExternalResource: ExternalResource() {
         }
 
         socket.rawOut.write(buffer.array())
+        socket.rawOut.flush()
 
         return socket
     }
