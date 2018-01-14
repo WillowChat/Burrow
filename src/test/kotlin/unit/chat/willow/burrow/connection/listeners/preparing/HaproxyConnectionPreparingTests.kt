@@ -5,11 +5,13 @@ import chat.willow.burrow.connection.line.ILineAccumulator
 import chat.willow.burrow.connection.line.LineAccumulator
 import chat.willow.burrow.connection.listeners.IConnectionListening
 import chat.willow.burrow.connection.listeners.preparing.HaproxyConnectionPreparing
+import chat.willow.burrow.connection.listeners.preparing.IHostLookupUseCase
 import chat.willow.burrow.connection.network.HaproxyHeaderDecoder
 import chat.willow.burrow.connection.network.IHaproxyHeaderDecoder
 import com.nhaarman.mockito_kotlin.any
 import com.nhaarman.mockito_kotlin.mock
 import com.nhaarman.mockito_kotlin.whenever
+import io.reactivex.Observable
 import io.reactivex.subjects.PublishSubject
 import org.junit.Before
 import org.junit.Test
@@ -22,12 +24,15 @@ class HaproxyConnectionPreparingTests {
 
     lateinit var mockFactory: IBurrowConnectionFactory
     lateinit var mockDecoder: IHaproxyHeaderDecoder
+    lateinit var mockHostnameLookup: IHostLookupUseCase
 
     @Before fun setUp() {
         mockFactory = mock()
         mockDecoder = mock()
+        mockHostnameLookup = mock()
+        whenever(mockHostnameLookup.lookUp(any(), any())).thenReturn(Observable.just("somewhere"))
 
-        sut = HaproxyConnectionPreparing(mockFactory, mockDecoder)
+        sut = HaproxyConnectionPreparing(mockFactory, mockDecoder, mockHostnameLookup)
     }
 
     @Test fun `if the first input is not decodable, connection is dropped`() {
@@ -95,6 +100,7 @@ class HaproxyConnectionPreparingTests {
 fun stubAddress(hostname: String): InetAddress {
     val stubAddress: InetAddress = mock()
     whenever(stubAddress.hostName).thenReturn(hostname)
+    whenever(stubAddress.hostAddress).thenReturn(hostname)
     whenever(stubAddress.canonicalHostName).thenReturn(hostname)
     return stubAddress
 }

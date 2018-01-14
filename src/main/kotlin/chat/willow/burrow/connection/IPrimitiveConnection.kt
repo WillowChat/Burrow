@@ -1,11 +1,13 @@
 package chat.willow.burrow.connection
 
+import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicInteger
 
 interface IPrimitiveConnection {
 
     fun close()
+    var address: InetAddress
     var host: String
     fun write(bytes: ByteBuffer)
 

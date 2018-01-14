@@ -3,6 +3,7 @@ package chat.willow.burrow.connection.network
 import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.connection.IPrimitiveConnection
 import java.io.IOException
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.SelectionKey
@@ -10,10 +11,10 @@ import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 
-open class NIOPrimitiveConnection(private val internalSocket: SocketChannel):
+class NIOPrimitiveConnection(private val internalSocket: SocketChannel, override var address: InetAddress):
     IPrimitiveConnection {
 
-    override var host: String = internalSocket.socket().inetAddress.canonicalHostName
+    override var host: String = address.hostAddress
 
     override fun close() {
         internalSocket.close()
@@ -111,8 +112,8 @@ class NIOWrapper(private val selectorFactory: ISelectorFactory): INIOWrapper {
         socket.configureBlocking(false)
 
         val clientKey = socket.register(selector, SelectionKey.OP_READ)
-
-        return NIOPrimitiveConnection(socket) to clientKey
+        val address = (socket.remoteAddress as InetSocketAddress)
+        return NIOPrimitiveConnection(socket, address.address) to clientKey
     }
 
     override fun attach(id: ConnectionId, key: SelectionKey) {

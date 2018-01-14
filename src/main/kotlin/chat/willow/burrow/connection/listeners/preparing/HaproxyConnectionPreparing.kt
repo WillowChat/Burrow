@@ -11,15 +11,26 @@ import chat.willow.burrow.connection.network.IHaproxyHeaderDecoder
 import chat.willow.burrow.helper.loggerFor
 import io.reactivex.Observable
 import io.reactivex.Observer
+import io.reactivex.rxkotlin.Observables
 import io.reactivex.rxkotlin.subscribeBy
+import io.reactivex.rxkotlin.withLatestFrom
+import io.reactivex.schedulers.Schedulers
+import java.net.InetAddress
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.timer
 
 class HaproxyConnectionPreparing(
     private val factory: IBurrowConnectionFactory,
-    private val decoder: IHaproxyHeaderDecoder
+    private val decoder: IHaproxyHeaderDecoder,
+    private val hostnameLookupUseCase: IHostLookupUseCase
 ) :
     IConnectionPreparing {
 
     private val LOGGER = loggerFor<HaproxyConnectionPreparing>()
+    private val timerScheduler = Schedulers.computation()
+    private val fakeHostnameLookupScheduler = Schedulers.io()
+
+    private val HOSTNAME_LOOKUP_TIMEOUT_SECONDS: Long = 10
 
     override fun prepare(
         input: Observable<IConnectionListening.Read>,
@@ -36,9 +47,11 @@ class HaproxyConnectionPreparing(
         val maybeHaproxyFrame = decodeFirstInput(input)
         dropIfFrameFailedToDecode(maybeHaproxyFrame, drop, connection)
 
-        val haproxyFrame = maybeHaproxyFrame.onErrorResumeNext(Observable.empty())
+        val haproxyFrame = maybeHaproxyFrame.onErrorResumeNext(Observable.empty()).share()
 
-        val newConnection = makeBurrowConnection(haproxyFrame, connection).share()
+        val newConnection = makeBurrowConnection(haproxyFrame, connection)
+            .share()
+
         addNewConnection(newConnection, connections, connection)
         trackNewConnection(newConnection, tracked)
 
@@ -49,14 +62,15 @@ class HaproxyConnectionPreparing(
         haproxyFrame: Observable<HaproxyHeaderDecoder.Output>,
         connection: IConnectionListening.Accepted
     ): Observable<Pair<BurrowConnection, HaproxyHeaderDecoder.Output>> {
-        return haproxyFrame
-            .map {
-                val primitiveConnection = connection.primitiveConnection
-                LOGGER.debug("Looking up client hostname ${connection.id} ${it.header.sourceAddress}")
-                primitiveConnection.host = it.header.sourceAddress.canonicalHostName
-                LOGGER.debug("Done ${connection.id} ${it.header.sourceAddress}")
+        val hostnameLookup = haproxyFrame
+            .flatMap { hostnameLookupUseCase.lookUp(it.header.sourceAddress, default = it.header.sourceAddress.hostAddress)}
 
-                factory.create(connection.id, primitiveConnection) to it
+        return Observables.combineLatest(haproxyFrame, hostnameLookup) { frame, hostname -> (frame to hostname) }
+            .map { (frame, hostname) ->
+                val primitiveConnection = connection.primitiveConnection
+                primitiveConnection.host = hostname
+
+                factory.create(connection.id, primitiveConnection) to frame
             }
     }
 

@@ -93,6 +93,25 @@ class SanityFunctionalTests {
         }
     }
 
+
+    @Test fun `register 500 haproxy clients in series`() {
+        val numberOfClients = 500
+        val list = (0 until numberOfClients).toList()
+
+        // todo: try coroutines
+
+        list.forEach {
+            val socket = burrow.haproxySocket()
+
+            socket.output.println("NICK someone$it")
+            socket.output.println("USER 1 2 3 4")
+
+            val response = socket.input.readLine()
+            socket.socket.close()
+            assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
+        }
+    }
+
     @Test fun `register 500 haproxy clients in parallel`() {
         val numberOfClients = 500
         val list = (0 until numberOfClients).toList().parallelStream()

@@ -133,7 +133,8 @@ class HaproxyHeaderDecoder : IHaproxyHeaderDecoder {
     }
 
     private fun readRemainingPayloadLength(buffer: ByteBuffer): Int? {
-        if (buffer.remaining() < 16) {
+        val remaining = buffer.remaining()
+        if (remaining < 16) {
             return null
         }
 

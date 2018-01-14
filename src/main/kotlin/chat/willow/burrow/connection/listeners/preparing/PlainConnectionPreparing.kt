@@ -10,7 +10,10 @@ import chat.willow.burrow.helper.loggerFor
 import io.reactivex.Observable
 import io.reactivex.Observer
 
-class PlainConnectionPreparing(private val factory: IBurrowConnectionFactory) :
+class PlainConnectionPreparing(
+    private val factory: IBurrowConnectionFactory,
+    private val hostnameLookupUseCase: IHostLookupUseCase
+) :
     IConnectionPreparing {
 
     private val LOGGER = loggerFor<PlainConnectionPreparing>()
@@ -32,12 +35,17 @@ class PlainConnectionPreparing(private val factory: IBurrowConnectionFactory) :
             }
             .subscribe(accumulator.input::onNext)
 
-        val primitiveConnection = connection.primitiveConnection
-        val burrowConnection = factory.create(connection.id, primitiveConnection)
+        hostnameLookupUseCase.lookUp(connection.primitiveConnection.address, connection.primitiveConnection.host)
+            .subscribe {
+                val primitiveConnection = connection.primitiveConnection
+                val burrowConnection = factory.create(connection.id, primitiveConnection)
 
-        connections[connection.id] = burrowConnection
+                connections[connection.id] = burrowConnection
 
-        LOGGER.info("Tracked connection $connection")
-        tracked.onNext(ConnectionTracker.Tracked(burrowConnection))
+                LOGGER.info("Tracked connection $connection")
+                tracked.onNext(ConnectionTracker.Tracked(burrowConnection))
+            }
+
+
     }
 }
