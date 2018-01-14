@@ -71,7 +71,7 @@ class ClientTracker(val connections: IConnectionTracker,
     override val drop = PublishSubject.create<ConnectionId>()
 
     init {
-        track.subscribe(this::track)
+        track.observeOn(clientsScheduler).subscribe(this::track)
         drop.observeOn(clientsScheduler).subscribe(this::drop)
         drop.subscribe(clientsUseCase.drop::onNext)
     }
