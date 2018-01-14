@@ -13,7 +13,7 @@ interface IHostLookupUseCase {
 
 }
 
-class HostLookupUseCase(val scheduler: Scheduler = Schedulers.newThread()): IHostLookupUseCase {
+class HostLookupUseCase(val scheduler: Scheduler = Schedulers.io()): IHostLookupUseCase {
 
     private val LOGGER = loggerFor<HostLookupUseCase>()
 
@@ -21,7 +21,7 @@ class HostLookupUseCase(val scheduler: Scheduler = Schedulers.newThread()): IHos
 
     override fun lookUp(address: InetAddress, default: String): Observable<String> {
         LOGGER.info("Looking up hostname: $address")
-        val hostname = tryResolveHostname(address)
+        val hostname = tryResolveHostname(address).observeOn(scheduler)
 
         return hostname
             .timeout(HOSTNAME_LOOKUP_TIMEOUT_SECONDS, TimeUnit.SECONDS, scheduler)
