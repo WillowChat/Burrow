@@ -70,8 +70,6 @@ class ConnectionTracker(
             .subscribe {
                 this.send(it.first, it.second)
             }
-
-        tracked.doOnComplete { LOGGER.info("tracked onComplete") }
     }
 
     override fun addConnectionListener(listener: IConnectionListening) {
@@ -82,32 +80,19 @@ class ConnectionTracker(
                 val readStream = PublishSubject.create<IConnectionListening.Read>()
                 socketReads += accepted.id to readStream
 
-                readStream
-                    .doOnNext { LOGGER.info("read onNext $it") }
-                    .doOnComplete { LOGGER.info("read stream completed ${accepted.id}") }
-                    .subscribe()
-
-                val lineReadStream = ReplaySubject.create<String>(4)
                 // todo: more elegant way to replay events for registration, whilst setting up
+                val lineReadStream = ReplaySubject.create<String>(4)
                 lineReads += accepted.id to lineReadStream
-
-                lineReadStream
-                    .doOnNext { LOGGER.info("lineRead onNext $it") }
-                    .doOnComplete { LOGGER.info("lineRead stream completed ${accepted.id}") }
-                    .subscribe()
 
                 val accumulator = LineAccumulator(bufferSize = MAX_LINE_LENGTH)
                 accumulators += accepted.id to accumulator
 
                 accumulator.lines
-                    .doOnSubscribe { LOGGER.info("accumulatorLines onSubscribe") }
-                    .doOnComplete { LOGGER.info("accumulatorLines onComplete") }
                     .subscribe(lineReadStream::onNext)
 
+                // todo: get rid of filter
                 listener.read
-                    .doOnComplete { LOGGER.info("listener read onComplete ${accepted.id}") }
                     .filter { it.id == accepted.id }
-                    .doOnNext { LOGGER.info("listener read onNext $it") }
                     .subscribe(readStream::onNext)
 
                 LOGGER.debug("Connection accepted - ${accepted.id}")

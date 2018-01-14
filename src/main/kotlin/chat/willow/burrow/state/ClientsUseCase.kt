@@ -44,9 +44,8 @@ class ClientsUseCase(connections: IConnectionTracker,
 
     init {
         val sharedTrack = track.observeOn(scheduler)
-            .doOnNext { LOGGER.info("track value $it") }
-            .doOnComplete { LOGGER.info("completed")}
             .share()
+
         setUpTracking(sharedTrack)
 
         drop

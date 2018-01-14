@@ -89,8 +89,6 @@ class ClientTracker(val connections: IConnectionTracker,
         val lines = connections.lineReads[connection.id] ?: throw RuntimeException("Expected lines to be set up")
 
         lines
-            .doOnNext { LOGGER.info("line $it") }
-            .doOnComplete { LOGGER.info("lines completed ${connection.id}") }
             .observeOn(clientsScheduler)
             .subscribe(clientKale.lines)
 
