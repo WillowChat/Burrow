@@ -70,14 +70,10 @@ class ClientTracker(val connections: IConnectionTracker,
     override val track = PublishSubject.create<BurrowConnection>()
     override val drop = PublishSubject.create<ConnectionId>()
 
-    private val sharedReads: Observable<Pair<ConnectionId, String>>
-
     init {
         track.subscribe(this::track)
         drop.subscribe(this::drop)
         drop.subscribe(clientsUseCase.drop)
-
-        sharedReads = connections.read.share()
     }
 
     private fun track(connection: BurrowConnection) {
@@ -85,15 +81,14 @@ class ClientTracker(val connections: IConnectionTracker,
             throw RuntimeException("Tried to track connection $connection with duplicate ID")
         }
 
+        val lines = connections.lineReads[connection.id] ?: throw RuntimeException("Expected lines to be set up")
+
         registeringClients += connection.id to RegisteringClient(connection)
 
         val clientKale = kaleFactory.create()
         kales += connection.id to clientKale
 
-        sharedReads
-            // todo: optimise?
-            .filter { it.first == connection.id }
-            .map { it.second }
+        lines
             .observeOn(kaleProcessingScheduler)
             .subscribe(clientKale.lines)
 
@@ -118,7 +113,7 @@ class ClientTracker(val connections: IConnectionTracker,
     }
 
     private fun registrationFailed(connection: BurrowConnection, error: Throwable) {
-        LOGGER.info("connection failed to register, dropping ${connection.id} $error")
+        LOGGER.info("onnection failed to register, dropping ${connection.id} $error")
         drop(connection.id)
         connections.drop.onNext(connection.id)
     }

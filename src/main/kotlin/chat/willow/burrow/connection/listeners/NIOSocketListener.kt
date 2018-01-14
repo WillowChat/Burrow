@@ -6,6 +6,8 @@ import chat.willow.burrow.connection.network.INIOWrapper
 import chat.willow.burrow.connection.network.ISelectionKeyWrapper
 import chat.willow.burrow.helper.IInterruptedChecker
 import chat.willow.burrow.helper.loggerFor
+import io.reactivex.Scheduler
+import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
@@ -82,7 +84,7 @@ class NIOSocketListener(private val hostname: String,
             return
         }
 
-        // bugfix: intentional copy - can't share buffer without being extremely sure where it is cleared and reused
+        // bugfix: int copy - can't share buffer without being extremely sure where it is cleared and reused
         val bytes = incomingBuffer.array().copyOfRange(0, bytesRead)
         read.onNext(IConnectionListening.Read(id = id, bytes = bytes))
     }

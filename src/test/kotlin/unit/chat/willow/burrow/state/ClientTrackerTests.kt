@@ -16,6 +16,7 @@ import com.nhaarman.mockito_kotlin.whenever
 import io.reactivex.subjects.PublishSubject
 import org.junit.Before
 import org.junit.Test
+import org.mockito.ArgumentMatchers.anyInt
 
 class ClientTrackerTests {
 
@@ -28,14 +29,15 @@ class ClientTrackerTests {
 
     private var lines = PublishSubject.create<String>()
     private var messages = PublishSubject.create<KaleObservable<IrcMessage>>()
-    private var read = PublishSubject.create<Pair<ConnectionId, String>>()
+    private var read = PublishSubject.create<String>()
+    private var reads = mutableMapOf(1 to read)
     private var dropped = PublishSubject.create<ConnectionTracker.Dropped>()
 
     private lateinit var track: PublishSubject<RegistrationUseCase.Registered>
 
     @Before fun setUp() {
         mockConnectionTracker = mock()
-        whenever(mockConnectionTracker.read).thenReturn(read)
+        whenever(mockConnectionTracker.lineReads).thenReturn(reads)
         whenever(mockConnectionTracker.dropped).thenReturn(dropped)
 
         mockRegistration = mock()

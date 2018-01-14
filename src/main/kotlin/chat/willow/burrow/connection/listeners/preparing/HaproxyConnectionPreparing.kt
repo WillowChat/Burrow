@@ -31,7 +31,7 @@ class HaproxyConnectionPreparing(
     ) {
         accumulateAfterFirstInput(input, accumulator)
 
-        LOGGER.info("Waiting for haproxy frame...")
+        LOGGER.info("${connection.id} - Waiting for haproxy frame...")
 
         val maybeHaproxyFrame = decodeFirstInput(input)
         dropIfFrameFailedToDecode(maybeHaproxyFrame, drop, connection)
@@ -62,18 +62,20 @@ class HaproxyConnectionPreparing(
         newConnection: Observable<Pair<BurrowConnection, HaproxyHeaderDecoder.Output>>,
         accumulator: ILineAccumulator
     ) {
-        newConnection.subscribe {
+        newConnection.flatMap {
             val frame = it.second
-            if (frame.remainingBytesRead != 0
-            ) {
-                accumulator.input.onNext(
+            if (frame.remainingBytesRead != 0) {
+                Observable.just(
                     ILineAccumulator.Input(
                         bytes = frame.remainingBytes,
                         bytesRead = frame.remainingBytesRead
                     )
                 )
+            } else {
+                Observable.empty()
             }
         }
+        .subscribe(accumulator.input)
     }
 
     private fun trackNewConnection(

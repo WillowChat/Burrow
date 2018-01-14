@@ -102,6 +102,9 @@ class ConnectionTrackerTests {
 
 class MockConnectionTracker: IConnectionTracker {
 
+    override val lineReads: Map<ConnectionId, Observable<String>>
+        get() = TODO("not implemented") //To change initializer of created properties use File | Settings | File Templates.
+
     var didGet = false
     var spyConnectionId: ConnectionId? = null
     var stubConnection: BurrowConnection? = null
@@ -123,15 +126,11 @@ class MockConnectionTracker: IConnectionTracker {
     override val send: Observer<Pair<ConnectionId, Any>>
     val sendSubject = PublishSubject.create<Pair<ConnectionId, Any>>()
 
-    override val read: Observable<Pair<ConnectionId, String>>
-    val readSubject = PublishSubject.create<Pair<ConnectionId, String>>()
-
     init {
         tracked = trackedSubject
         dropped = droppedSubject
         drop = dropSubject
         send = sendSubject
-        read = readSubject
     }
 
     var didAddConnectionListener = false

@@ -22,7 +22,7 @@ interface IConnectionTracker {
 
     val tracked: Observable<ConnectionTracker.Tracked>
     val dropped: Observable<ConnectionTracker.Dropped>
-    val read: Observable<Pair<ConnectionId, String>>
+    val lineReads: Map<ConnectionId, Observable<String>>
 
     val drop: Observer<ConnectionId>
     val send: Observer<Pair<ConnectionId, Any>>
@@ -46,7 +46,9 @@ class ConnectionTracker(
 
     override val drop = PublishSubject.create<ConnectionId>()
     override val send = PublishSubject.create<Pair<ConnectionId, Any>>()
-    override val read = PublishSubject.create<Pair<ConnectionId, String>>()
+
+    private val socketReads = ConcurrentHashMap<ConnectionId, Observable<IConnectionListening.Read>>()
+    override val lineReads = ConcurrentHashMap<ConnectionId, Observable<String>>()
 
     private val accumulators = ConcurrentHashMap<ConnectionId, ILineAccumulator>()
 
@@ -57,6 +59,8 @@ class ConnectionTracker(
                 accumulators -= it
                 connections[it]?.primitiveConnection?.close()
                 connections -= it
+                socketReads -= it
+                lineReads -= it
             }
 
         send
@@ -70,7 +74,26 @@ class ConnectionTracker(
         LOGGER.info("Adding listener: $listener")
 
         listener.accepted
-            .doOnNext { LOGGER.debug("Connection accepted - $it") }
+            .doOnNext { accepted ->
+                val readStream = PublishSubject.create<IConnectionListening.Read>()
+                socketReads += accepted.id to readStream
+
+                val lineReadStream = PublishSubject.create<String>()
+                lineReads += accepted.id to lineReadStream
+
+                val accumulator = LineAccumulator(bufferSize = MAX_LINE_LENGTH)
+
+                accumulator.lines
+                    .subscribe(lineReadStream)
+
+                accumulators += accepted.id to accumulator
+
+                listener.read
+                    .filter { it.id == accepted.id }
+                    .subscribe(readStream)
+
+                LOGGER.debug("Connection accepted - ${accepted.id}")
+            }
             .subscribe { track(listener, it) }
 
         listener.closed
@@ -87,21 +110,10 @@ class ConnectionTracker(
     }
 
     private fun track(listener: IConnectionListening, accepted: IConnectionListening.Accepted) {
-        val accumulator = LineAccumulator(bufferSize = MAX_LINE_LENGTH)
+        val reads = socketReads[accepted.id] ?: throw RuntimeException("Expected read channel to be set up")
+        val accumulator = accumulators[accepted.id] ?: throw RuntimeException("Expected accumulator to be set up")
 
-        accumulator.lines
-            .observeOn(scheduler)
-            .map { accepted.id to it }
-            .subscribe(read)
-
-        accumulators += accepted.id to accumulator
-
-        val input = listener.read
-            .observeOn(scheduler)
-            .filter { it.id == accepted.id }
-            .observeOn(scheduler)
-
-        listener.prepare(input, accumulator, accepted, tracked, drop, connections)
+        listener.prepare(reads, accumulator, accepted, tracked, drop, connections)
     }
 
     override fun get(id: ConnectionId): BurrowConnection? {
