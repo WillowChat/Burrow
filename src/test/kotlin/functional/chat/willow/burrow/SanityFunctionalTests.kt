@@ -69,6 +69,7 @@ class SanityFunctionalTests {
             socket.output.println("USER 1 2 3 4")
 
             val response = socket.input.readLine()
+            socket.socket.close()
             assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
         }
     }
@@ -86,6 +87,7 @@ class SanityFunctionalTests {
             socket.output.println("USER 1 2 3 4")
 
             val response = socket.input.readLine()
+            socket.socket.close()
             assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
         }
     }
