@@ -13,7 +13,9 @@ import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.Scheduler
 import io.reactivex.subjects.PublishSubject
+import io.reactivex.subjects.ReplaySubject
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 interface IConnectionTracker {
 
@@ -85,8 +87,9 @@ class ConnectionTracker(
                     .doOnComplete { LOGGER.info("read stream completed ${accepted.id}") }
                     .subscribe()
 
-                val lineReadStream = PublishSubject.create<String>()
-                lineReads += accepted.id to lineReadStream.cache()
+                val lineReadStream = ReplaySubject.create<String>(4)
+                // todo: more elegant way to replay events for registration, whilst setting up
+                lineReads += accepted.id to lineReadStream
 
                 lineReadStream
                     .doOnNext { LOGGER.info("lineRead onNext $it") }
