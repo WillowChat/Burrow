@@ -52,7 +52,9 @@ class HaproxyConnectionPreparing(
         return haproxyFrame
             .map {
                 val primitiveConnection = connection.primitiveConnection
+                LOGGER.debug("Looking up client hostname ${connection.id} ${it.header.sourceAddress}")
                 primitiveConnection.host = it.header.sourceAddress.canonicalHostName
+                LOGGER.debug("Done ${connection.id} ${it.header.sourceAddress}")
 
                 factory.create(connection.id, primitiveConnection) to it
             }
