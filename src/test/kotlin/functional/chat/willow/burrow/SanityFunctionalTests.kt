@@ -94,8 +94,8 @@ class SanityFunctionalTests {
     }
 
 
-    @Test fun `register 500 haproxy clients in series`() {
-        val numberOfClients = 500
+    @Test fun `register 100 haproxy clients in series`() {
+        val numberOfClients = 100
         val list = (0 until numberOfClients).toList()
 
         // todo: try coroutines

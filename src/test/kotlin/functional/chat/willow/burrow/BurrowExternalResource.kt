@@ -51,7 +51,7 @@ class BurrowExternalResource: ExternalResource() {
         }
 
         socket.keepAlive = false
-        socket.soTimeout = 20000
+        socket.soTimeout = 2000
 
         val rawOut = socket.getOutputStream()
         val socketOut = PrintWriter(socket.getOutputStream(), true)
