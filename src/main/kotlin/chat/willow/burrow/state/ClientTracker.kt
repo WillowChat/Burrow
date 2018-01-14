@@ -12,7 +12,6 @@ import chat.willow.kale.KaleRouter
 import chat.willow.kale.core.tag.KaleTagRouter
 import chat.willow.kale.helper.INamed
 import chat.willow.kale.irc.prefix.Prefix
-import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.Scheduler
 import io.reactivex.rxkotlin.subscribeBy

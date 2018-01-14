@@ -4,7 +4,6 @@ import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.connection.IPrimitiveConnection
 import chat.willow.burrow.connection.listeners.preparing.IConnectionPreparing
 import io.reactivex.Observable
-import java.net.InetAddress
 
 interface IConnectionListening: IConnectionPreparing {
     data class Read(val id: ConnectionId, val bytes: ByteArray)

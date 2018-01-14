@@ -13,11 +13,7 @@ import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.rxkotlin.Observables
 import io.reactivex.rxkotlin.subscribeBy
-import io.reactivex.rxkotlin.withLatestFrom
 import io.reactivex.schedulers.Schedulers
-import java.net.InetAddress
-import java.util.concurrent.TimeUnit
-import kotlin.concurrent.timer
 
 class HaproxyConnectionPreparing(
     private val factory: IBurrowConnectionFactory,

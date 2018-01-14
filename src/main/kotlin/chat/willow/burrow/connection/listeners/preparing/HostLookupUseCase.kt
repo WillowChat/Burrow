@@ -3,7 +3,6 @@ package chat.willow.burrow.connection.listeners.preparing
 import chat.willow.burrow.helper.loggerFor
 import io.reactivex.Observable
 import io.reactivex.Scheduler
-import io.reactivex.rxkotlin.Observables
 import io.reactivex.schedulers.Schedulers
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
