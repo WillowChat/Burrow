@@ -63,6 +63,7 @@ class ChannelMessagesUseCase(private val channels: IChannelsUseCase, private val
         }
 
         val otherUsers = channel.users.all.keys
+                // todo: should probably be a capability of the storage
                 .map(Burrow.Server.MAPPER::toLower)
                 .filter { it != Burrow.Server.MAPPER.toLower(client.name) }
                 .mapNotNull { clients.lookUpClient(it) }
