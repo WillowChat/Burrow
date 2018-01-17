@@ -57,7 +57,7 @@ class HostLookupUseCase(val lookupScheduler: Scheduler = Schedulers.io(), val ti
 
     private fun forwardLookupHostnameMatches(host: String, original: InetAddress): Observable<Boolean> {
         return Observable.fromCallable {
-            InetAddress.getByName(host).hostAddress == original.hostAddress
+            InetAddress.getByName(host).address.contentEquals(original.address)
         }
     }
 
