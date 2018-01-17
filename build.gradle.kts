@@ -25,8 +25,8 @@ apply {
 
 plugins {
     java
-    kotlin("jvm") version "1.2.10"
-    kotlin("kapt") version "1.2.10"
+    kotlin("jvm") version "1.2.20"
+    kotlin("kapt") version "1.2.20"
     id("com.github.johnrengelman.shadow") version "2.0.2"
 }
 
@@ -88,7 +88,7 @@ dependencies {
 
     testImplementation("junit:junit:4.12")
     testImplementation("org.mockito:mockito-core:2.2.9")
-    testImplementation("com.nhaarman:mockito-kotlin:1.2.0")
+    testImplementation("com.nhaarman:mockito-kotlin:1.5.0")
 }
 
 test {
