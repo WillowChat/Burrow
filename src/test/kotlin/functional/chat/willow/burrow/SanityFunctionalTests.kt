@@ -58,7 +58,7 @@ class SanityFunctionalTests {
 
 
     @Test fun `register 100 plaintext clients in series`() {
-        val numberOfClients = 500
+        val numberOfClients = 100
         val list = (0 until numberOfClients).toList()
 
         // todo: try coroutines
