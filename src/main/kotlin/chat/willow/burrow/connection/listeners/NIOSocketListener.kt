@@ -59,6 +59,12 @@ class NIOSocketListener(private val hostname: String,
 
     override fun tearDown() {
         nioWrapper.tearDown()
+
+        if (processingThread?.isAlive == true) {
+            LOGGER.debug("Interrupting thread")
+            processingThread?.interrupt()
+            processingThread?.join()
+        }
     }
 
     private fun accept(key: ISelectionKeyWrapper) {

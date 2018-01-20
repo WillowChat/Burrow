@@ -99,6 +99,10 @@ class NIOWrapper(
         var selected = 0
         while (selected <= 0 && !interruptedChecker.isInterrupted) {
             selected = selector.select()
+
+            if (interruptedChecker.isInterrupted) {
+                return mutableSetOf()
+            }
         }
 
         return selector.selectedKeys().map(::SelectionKeyWrapper).toMutableSet()
