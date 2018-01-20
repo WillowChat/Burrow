@@ -41,9 +41,9 @@ class BurrowExternalResource: ExternalResource() {
         }
 
         burrowThread.interrupt()
-        burrowThread.join(2000)
+        burrowThread.join(3000)
         if (burrowThread.isAlive) {
-            throw IllegalStateException("Burrow did not shut down correctly (waited 2 seconds)")
+            throw IllegalStateException("Burrow did not shut down correctly (waited 3 seconds)")
         }
 
         super.after()
