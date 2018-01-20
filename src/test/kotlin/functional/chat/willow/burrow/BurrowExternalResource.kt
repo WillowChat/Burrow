@@ -14,6 +14,7 @@ class BurrowExternalResource: ExternalResource() {
 
     lateinit var burrow: Burrow
     lateinit var burrowThread: Thread
+    lateinit var socket: Socket
 
     private val LOGGER = loggerFor<BurrowExternalResource>()
 
@@ -28,10 +29,13 @@ class BurrowExternalResource: ExternalResource() {
     }
 
     override fun after() {
+        if (!socket.isClosed) {
+            socket.close()
+        }
         burrowThread.interrupt()
-        burrowThread.join(3000)
+        burrowThread.join(2000)
         if (burrowThread.isAlive) {
-            throw IllegalStateException("Burrow did not shut down correctly (waited 3 seconds)")
+            throw IllegalStateException("Burrow did not shut down correctly (waited 2 seconds)")
         }
 
         super.after()
@@ -67,7 +71,7 @@ class BurrowExternalResource: ExternalResource() {
             throw IllegalStateException("Couldn't connect to Burrow")
         }
 
-        socket.soTimeout = 2000
+        socket.soTimeout = 10000
 
         val rawOut = socket.getOutputStream()
         val socketOut = PrintWriter(socket.getOutputStream(), true)
@@ -79,6 +83,7 @@ class BurrowExternalResource: ExternalResource() {
             returnSocket.ignorePreregistration()
         }
 
+        this.socket = socket
         return returnSocket
     }
 
@@ -104,6 +109,7 @@ class BurrowExternalResource: ExternalResource() {
 
         socket.ignorePreregistration()
 
+        this.socket = socket.socket
         return socket
     }
 
