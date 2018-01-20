@@ -1,5 +1,6 @@
 package functional.chat.willow.burrow
 
+import chat.willow.burrow.helper.loggerFor
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -7,6 +8,8 @@ import org.junit.Test
 class SanityFunctionalTests {
 
     @get:Rule val burrow = BurrowExternalResource()
+
+    private val LOGGER = loggerFor<SanityFunctionalTests>()
 
     @Test fun `logging on as someone results in an MOTD targeted at them`() {
         val socket = burrow.socket()
@@ -68,8 +71,13 @@ class SanityFunctionalTests {
 
             socket.output.println("NICK someone$it")
             socket.output.println("USER 1 2 3 4")
+            socket.output.flush()
 
-            val response = socket.input.readLine()
+            val response = try {
+                socket.input.readLine()
+            } catch (exception: Exception) {
+                LOGGER.error("Failed to read welcome for connection $it")
+            }
             socket.socket.close()
             assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
         }
@@ -86,8 +94,13 @@ class SanityFunctionalTests {
 
             socket.output.println("NICK someone$it")
             socket.output.println("USER 1 2 3 4")
+            socket.output.flush()
 
-            val response = socket.input.readLine()
+            val response = try {
+                socket.input.readLine()
+            } catch (exception: Exception) {
+                LOGGER.error("Failed to read welcome for connection $it")
+            }
             socket.socket.close()
             assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
         }
