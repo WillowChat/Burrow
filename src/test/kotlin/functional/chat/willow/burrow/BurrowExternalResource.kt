@@ -8,13 +8,15 @@ import org.junit.rules.ExternalResource
 import java.io.*
 import java.net.Socket
 import java.nio.ByteBuffer
+import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 
 class BurrowExternalResource: ExternalResource() {
 
     lateinit var burrow: Burrow
     lateinit var burrowThread: Thread
-    lateinit var socket: Socket
+    lateinit var sockets: Set<Socket>
 
     private val LOGGER = loggerFor<BurrowExternalResource>()
 
@@ -23,15 +25,21 @@ class BurrowExternalResource: ExternalResource() {
 
         burrow = Burrow
 
+        // todo: why doesn't java have a concurrenthashset?
+        sockets = Collections.newSetFromMap(ConcurrentHashMap<Socket, Boolean>())
+
         burrowThread = thread(start = true) {
             burrow.main(arrayOf())
         }
     }
 
     override fun after() {
-        if (!socket.isClosed) {
-            socket.close()
+        sockets.forEach {
+            if (!it.isClosed) {
+                it.close()
+            }
         }
+
         burrowThread.interrupt()
         burrowThread.join(2000)
         if (burrowThread.isAlive) {
@@ -83,7 +91,7 @@ class BurrowExternalResource: ExternalResource() {
             returnSocket.ignorePreregistration()
         }
 
-        this.socket = socket
+        this.sockets += socket
         return returnSocket
     }
 
@@ -109,7 +117,7 @@ class BurrowExternalResource: ExternalResource() {
 
         socket.ignorePreregistration()
 
-        this.socket = socket.socket
+        this.sockets += socket.socket
         return socket
     }
 

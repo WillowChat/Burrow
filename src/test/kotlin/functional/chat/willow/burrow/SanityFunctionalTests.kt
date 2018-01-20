@@ -1,9 +1,16 @@
 package functional.chat.willow.burrow
 
 import chat.willow.burrow.helper.loggerFor
+import io.reactivex.BackpressureStrategy
+import io.reactivex.Flowable
+import io.reactivex.parallel.ParallelFlowable
+import io.reactivex.rxkotlin.toObservable
+import io.reactivex.schedulers.Schedulers
+import org.junit.Assert
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import java.util.concurrent.Executors
 
 class SanityFunctionalTests {
 
@@ -62,79 +69,87 @@ class SanityFunctionalTests {
 
     @Test fun `register 100 plaintext clients in series`() {
         val numberOfClients = 100
-        val list = (0 until numberOfClients).toList()
 
-        // todo: try coroutines
+        Flowable.fromIterable((0 until numberOfClients))
+            .parallel()
+            .runOn(Schedulers.io())
+            .map {
+                val socket = burrow.socket()
 
-        list.forEach {
-            val socket = burrow.socket()
+                socket.output.println("NICK someone$it")
+                socket.output.println("USER 1 2 3 4")
+                socket.output.flush()
 
-            socket.output.println("NICK someone$it")
-            socket.output.println("USER 1 2 3 4")
-            socket.output.flush()
-
-            val response = try {
-                socket.input.readLine()
-            } catch (exception: Exception) {
-                LOGGER.error("Failed to read welcome for connection $it")
+                val response = try {
+                    socket.input.readLine()
+                } catch (exception: Exception) {
+                    LOGGER.error("Failed to read welcome for connection $it")
+                }
+                socket.socket.close()
+                assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
             }
-            socket.socket.close()
-            assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
-        }
+            .sequential()
+            .blockingSubscribe()
     }
 
     @Test fun `register 500 plaintext clients in parallel`() {
         val numberOfClients = 500
-        val list = (0 until numberOfClients).toList().parallelStream()
 
-        // todo: try coroutines
+        Flowable.fromIterable((0 until numberOfClients))
+            .parallel()
+            .runOn(Schedulers.io())
+            .map {
+                val socket = burrow.socket()
 
-        list.forEach {
-            val socket = burrow.socket()
+                socket.output.println("NICK someone$it")
+                socket.output.println("USER 1 2 3 4")
+                socket.output.flush()
 
-            socket.output.println("NICK someone$it")
-            socket.output.println("USER 1 2 3 4")
-            socket.output.flush()
-
-            val response = try {
-                socket.input.readLine()
-            } catch (exception: Exception) {
-                LOGGER.error("Failed to read welcome for connection $it")
+                val response = try {
+                    socket.input.readLine()
+                } catch (exception: Exception) {
+                    Assert.fail("Failed to read welcome for connection $it")
+                }
+                socket.socket.close()
+                assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
             }
-            socket.socket.close()
-            assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
-        }
+            .sequential()
+            .blockingSubscribe()
     }
 
 
     @Test fun `register 100 haproxy clients in series`() {
         val numberOfClients = 100
-        val list = (0 until numberOfClients).toList()
 
-        // todo: try coroutines
+        Flowable.fromIterable((0 until numberOfClients))
+            .parallel()
+            .runOn(Schedulers.io())
+            .map {
+                val socket = burrow.haproxySocket("NICK someone$it\r\nUSER 1 2 3 4\r\n".toByteArray())
 
-        list.forEach {
-            val socket = burrow.haproxySocket("NICK someone$it\r\nUSER 1 2 3 4\r\n".toByteArray())
-
-            val response = socket.input.readLine()
-            socket.socket.close()
-            assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
-        }
+                val response = socket.input.readLine()
+                socket.socket.close()
+                assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
+            }
+            .sequential()
+            .blockingSubscribe()
     }
 
     @Test fun `register 500 haproxy clients in parallel`() {
         val numberOfClients = 500
-        val list = (0 until numberOfClients).toList().parallelStream()
 
-        // todo: try coroutines
+        Flowable.fromIterable((0 until numberOfClients))
+            .parallel()
+            .runOn(Schedulers.io())
+            .map {
+                val socket = burrow.haproxySocket("NICK someone$it\r\nUSER 1 2 3 4\r\n".toByteArray())
 
-        list.forEach {
-            val socket = burrow.haproxySocket("NICK someone$it\r\nUSER 1 2 3 4\r\n".toByteArray())
-
-            val response = socket.input.readLine()
-            socket.socket.close()
-            assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
-        }
+                val response = socket.input.readLine()
+                socket.socket.close()
+                assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
+            }
+            .sequential()
+            .blockingSubscribe()
     }
 
 }
