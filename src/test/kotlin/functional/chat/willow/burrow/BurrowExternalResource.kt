@@ -4,6 +4,7 @@ import chat.willow.burrow.Burrow
 import chat.willow.burrow.connection.network.HaproxyHeaderDecoder
 import chat.willow.burrow.connection.network.HaproxyHeaderDecoder.Companion.HAPROXY_V2_PREFIX
 import chat.willow.burrow.helper.loggerFor
+import org.junit.Assert
 import org.junit.rules.ExternalResource
 import java.io.*
 import java.net.Socket
@@ -43,7 +44,7 @@ class BurrowExternalResource: ExternalResource() {
         burrowThread.interrupt()
         burrowThread.join(3000)
         if (burrowThread.isAlive) {
-            throw IllegalStateException("Burrow did not shut down correctly (waited 3 seconds)")
+            Assert.fail("Burrow did not shut down correctly (waited 3 seconds)")
         }
 
         super.after()

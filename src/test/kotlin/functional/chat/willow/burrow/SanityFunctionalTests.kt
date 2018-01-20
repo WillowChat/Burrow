@@ -1,22 +1,26 @@
 package functional.chat.willow.burrow
 
 import chat.willow.burrow.helper.loggerFor
-import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
-import io.reactivex.parallel.ParallelFlowable
-import io.reactivex.rxkotlin.toObservable
 import io.reactivex.schedulers.Schedulers
 import org.junit.Assert
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 
 class SanityFunctionalTests {
 
     @get:Rule val burrow = BurrowExternalResource()
 
     private val LOGGER = loggerFor<SanityFunctionalTests>()
+
+    lateinit var counter: AtomicInteger
+
+    @Before fun setUp() {
+        counter = AtomicInteger()
+    }
 
     @Test fun `logging on as someone results in an MOTD targeted at them`() {
         val socket = burrow.socket()
@@ -66,11 +70,10 @@ class SanityFunctionalTests {
         assertEquals(":🐰 001 someone_ :Welcome to Burrow Tests", response)
     }
 
-
     @Test fun `register 100 plaintext clients in series`() {
         val numberOfClients = 100
 
-        Flowable.fromIterable((0 until numberOfClients))
+        Flowable.fromIterable((1 .. numberOfClients))
             .parallel()
             .runOn(Schedulers.io())
             .map {
@@ -87,15 +90,19 @@ class SanityFunctionalTests {
                 }
                 socket.socket.close()
                 assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
+
+                it
             }
             .sequential()
-            .blockingSubscribe()
+            .blockingSubscribe { counter.incrementAndGet() }
+
+        assertEquals(numberOfClients, counter.get())
     }
 
     @Test fun `register 500 plaintext clients in parallel`() {
         val numberOfClients = 500
 
-        Flowable.fromIterable((0 until numberOfClients))
+        Flowable.fromIterable((1 .. numberOfClients))
             .parallel()
             .runOn(Schedulers.io())
             .map {
@@ -114,14 +121,16 @@ class SanityFunctionalTests {
                 assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
             }
             .sequential()
-            .blockingSubscribe()
+            .blockingSubscribe { counter.incrementAndGet() }
+
+        assertEquals(numberOfClients, counter.get())
     }
 
 
     @Test fun `register 100 haproxy clients in series`() {
         val numberOfClients = 100
 
-        Flowable.fromIterable((0 until numberOfClients))
+        Flowable.fromIterable((1 .. numberOfClients))
             .parallel()
             .runOn(Schedulers.io())
             .map {
@@ -132,13 +141,15 @@ class SanityFunctionalTests {
                 assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
             }
             .sequential()
-            .blockingSubscribe()
+            .blockingSubscribe { counter.incrementAndGet() }
+
+        assertEquals(numberOfClients, counter.get())
     }
 
     @Test fun `register 500 haproxy clients in parallel`() {
         val numberOfClients = 500
 
-        Flowable.fromIterable((0 until numberOfClients))
+        Flowable.fromIterable((1 .. numberOfClients))
             .parallel()
             .runOn(Schedulers.io())
             .map {
@@ -149,7 +160,9 @@ class SanityFunctionalTests {
                 assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
             }
             .sequential()
-            .blockingSubscribe()
+            .blockingSubscribe { counter.incrementAndGet() }
+
+        assertEquals(numberOfClients, counter.get())
     }
 
 }

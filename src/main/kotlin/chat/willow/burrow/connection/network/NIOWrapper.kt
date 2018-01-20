@@ -2,6 +2,7 @@ package chat.willow.burrow.connection.network
 
 import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.connection.IPrimitiveConnection
+import chat.willow.burrow.helper.IInterruptedChecker
 import java.io.IOException
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -68,7 +69,10 @@ interface INIOWrapper {
 
 }
 
-class NIOWrapper(private val selectorFactory: ISelectorFactory): INIOWrapper {
+class NIOWrapper(
+    private val selectorFactory: ISelectorFactory,
+    private val interruptedChecker: IInterruptedChecker
+): INIOWrapper {
 
     private lateinit var selector: Selector
     private var channel: ServerSocketChannel? = null
@@ -88,11 +92,12 @@ class NIOWrapper(private val selectorFactory: ISelectorFactory): INIOWrapper {
 
     override fun tearDown() {
         channel?.close()
+        channel = null
     }
 
     override fun select(): MutableSet<ISelectionKeyWrapper> {
         var selected = 0
-        while (selected <= 0) {
+        while (selected <= 0 && !interruptedChecker.isInterrupted) {
             selected = selector.select()
         }
 

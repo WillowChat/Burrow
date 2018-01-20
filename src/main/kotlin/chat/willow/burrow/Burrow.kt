@@ -3,6 +3,7 @@ package chat.willow.burrow
 import chat.willow.burrow.configuration.BurrowConfig
 import chat.willow.burrow.configuration.ListenerConfig
 import chat.willow.burrow.connection.BurrowConnectionFactory
+import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.connection.ConnectionIdProvider
 import chat.willow.burrow.connection.ConnectionTracker
 import chat.willow.burrow.connection.listeners.IConnectionListening
@@ -48,10 +49,12 @@ object Burrow {
         LOGGER.info("Loading configuration...")
         val config = BurrowConfig()
 
+        val connectionIdProvider = ConnectionIdProvider()
+
         val listeners = config.server.listen.map {
             when (it.type) {
-                ListenerConfig.Type.PLAINTEXT -> createPlaintextListener(it.host, it.port)
-                ListenerConfig.Type.HAPROXY_V2 -> createHaproxyListener(it.host, it.port)
+                ListenerConfig.Type.PLAINTEXT -> createPlaintextListener(it.host, it.port, connectionIdProvider)
+                ListenerConfig.Type.HAPROXY_V2 -> createHaproxyListener(it.host, it.port, connectionIdProvider)
             }
         }
 
@@ -86,9 +89,9 @@ object Burrow {
         LOGGER.info("Ended")
     }
 
-    private fun createHaproxyListener(host: String, port: Int): IConnectionListening {
+    private fun createHaproxyListener(host: String, port: Int, idProvider: ConnectionIdProvider): IConnectionListening {
         val selectorFactory = SelectorFactory
-        val nioWrapper = NIOWrapper(selectorFactory)
+        val nioWrapper = NIOWrapper(selectorFactory, ThreadInterruptedChecker)
         val interruptedChecker = ThreadInterruptedChecker
 
         val buffer = ByteBuffer.allocate(Server.MAX_LINE_LENGTH)
@@ -102,14 +105,14 @@ object Burrow {
             nioWrapper,
             buffer,
             interruptedChecker,
-            ConnectionIdProvider,
+            idProvider,
             haproxyPreparing
         )
     }
 
-    private fun createPlaintextListener(host: String, port: Int): IConnectionListening {
+    private fun createPlaintextListener(host: String, port: Int, idProvider: ConnectionIdProvider): IConnectionListening {
         val selectorFactory = SelectorFactory
-        val nioWrapper = NIOWrapper(selectorFactory)
+        val nioWrapper = NIOWrapper(selectorFactory, ThreadInterruptedChecker)
         val interruptedChecker = ThreadInterruptedChecker
 
         val buffer = ByteBuffer.allocate(Server.MAX_LINE_LENGTH)
@@ -123,7 +126,7 @@ object Burrow {
             nioWrapper,
             buffer,
             interruptedChecker,
-            ConnectionIdProvider,
+            idProvider,
             plainPreparing
         )
     }

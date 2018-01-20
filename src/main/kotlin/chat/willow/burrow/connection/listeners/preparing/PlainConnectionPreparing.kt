@@ -59,7 +59,9 @@ class PlainConnectionPreparing(
             .map { PlainConnectionPreparing.LOOK_UP_COMPLETE(it) }
             .subscribe(send::onNext)
 
-        hostnameLookup.map {
+        hostnameLookup
+            .take(1)
+            .map {
                 val primitiveConnection = connection.primitiveConnection
                 val burrowConnection = factory.create(connection.id, primitiveConnection)
 

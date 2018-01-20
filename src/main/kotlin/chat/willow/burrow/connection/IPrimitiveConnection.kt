@@ -19,7 +19,7 @@ interface IConnectionIdProvider {
     fun next(): ConnectionId
 }
 
-object ConnectionIdProvider: IConnectionIdProvider {
+class ConnectionIdProvider: IConnectionIdProvider {
     private var nextConnectionId = AtomicInteger(0)
 
     override fun next(): ConnectionId {
