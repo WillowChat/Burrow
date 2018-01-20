@@ -41,6 +41,7 @@ class SanityFunctionalTests {
         val socket = burrow.haproxySocket(content = "NICK someone_\r\n".toByteArray(Charsets.UTF_8))
 
         socket.output.println("USER 1 2 3 4")
+        socket.input.readLine()
 
         val response = socket.input.readLine()
         assertEquals(":🐰 001 someone_ :Welcome to Burrow Tests", response)
@@ -51,6 +52,7 @@ class SanityFunctionalTests {
 
         socket.output.println("NICK someone_")
         socket.output.println("USER 1 2 3 4")
+        socket.input.readLine()
 
         val response = socket.input.readLine()
         assertEquals(":🐰 001 someone_ :Welcome to Burrow Tests", response)
@@ -102,6 +104,7 @@ class SanityFunctionalTests {
 
         list.forEach {
             val socket = burrow.haproxySocket("NICK someone$it\r\nUSER 1 2 3 4\r\n".toByteArray())
+            socket.input.readLine()
 
             val response = socket.input.readLine()
             socket.socket.close()
@@ -117,6 +120,7 @@ class SanityFunctionalTests {
 
         list.forEach {
             val socket = burrow.haproxySocket("NICK someone$it\r\nUSER 1 2 3 4\r\n".toByteArray())
+            socket.input.readLine()
 
             val response = socket.input.readLine()
             socket.socket.close()

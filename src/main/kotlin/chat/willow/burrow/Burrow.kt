@@ -19,6 +19,8 @@ import chat.willow.burrow.state.ClientTracker
 import chat.willow.burrow.state.ClientsUseCase
 import chat.willow.burrow.state.RegistrationUseCase
 import chat.willow.kale.*
+import chat.willow.kale.core.message.IMessageSerialiser
+import chat.willow.kale.core.message.IrcMessage
 import chat.willow.kale.core.tag.KaleTagRouter
 import chat.willow.kale.generated.KaleNumerics
 import chat.willow.kale.helper.CaseMapping

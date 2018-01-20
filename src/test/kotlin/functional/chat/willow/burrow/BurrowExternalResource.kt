@@ -35,7 +35,7 @@ class BurrowExternalResource: ExternalResource() {
 
     data class BurrowTestSocket(val socket: Socket, val output: PrintWriter, val input: BufferedReader, val rawOut: OutputStream)
 
-    fun socket(host: String = "127.0.0.1", port: Int = 6770): BurrowTestSocket {
+    fun socket(host: String = "127.0.0.1", port: Int = 6770, removeFirstLine: Boolean = true): BurrowTestSocket {
         var socket: Socket? = null
         retry@for (i in 0..30) {
             try {
@@ -56,11 +56,15 @@ class BurrowExternalResource: ExternalResource() {
         val socketOut = PrintWriter(socket.getOutputStream(), true)
         val socketIn = BufferedReader(InputStreamReader(socket.getInputStream()))
 
+        if (removeFirstLine) {
+            socketIn.readLine()
+        }
+
         return BurrowTestSocket(socket, socketOut, socketIn, rawOut)
     }
 
     fun haproxySocket(content: ByteArray = byteArrayOf()): BurrowTestSocket {
-        val socket = socket(port = 6771)
+        val socket = socket(port = 6771, removeFirstLine = false)
 
         val inet4Length = 4 + 4 + 2 + 2
         val buffer = ByteBuffer.allocate(16 + inet4Length + content.size)

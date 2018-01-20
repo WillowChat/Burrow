@@ -9,6 +9,7 @@ import chat.willow.burrow.connection.listeners.IConnectionListening
 import chat.willow.burrow.connection.network.HaproxyHeaderDecoder
 import chat.willow.burrow.connection.network.IHaproxyHeaderDecoder
 import chat.willow.burrow.helper.loggerFor
+import chat.willow.kale.core.message.IrcMessage
 import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.Scheduler
@@ -32,7 +33,8 @@ class HaproxyConnectionPreparing(
         connection: IConnectionListening.Accepted,
         tracked: Observer<ConnectionTracker.Tracked>,
         drop: Observer<ConnectionId>,
-        connections: MutableMap<ConnectionId, BurrowConnection>
+        connections: MutableMap<ConnectionId, BurrowConnection>,
+        send: Observer<IrcMessage>
     ) {
         accumulateAfterFirstInput(input, accumulator)
 
@@ -43,7 +45,7 @@ class HaproxyConnectionPreparing(
 
         val haproxyFrame = maybeHaproxyFrame.onErrorResumeNext(Observable.empty()).share()
 
-        val newConnection = makeBurrowConnection(haproxyFrame, connection)
+        val newConnection = makeBurrowConnection(haproxyFrame, connection, send)
             .share()
 
         addNewConnection(newConnection, connections, connection)
@@ -54,11 +56,19 @@ class HaproxyConnectionPreparing(
 
     private fun makeBurrowConnection(
         haproxyFrame: Observable<HaproxyHeaderDecoder.Output>,
-        connection: IConnectionListening.Accepted
+        connection: IConnectionListening.Accepted,
+        send: Observer<IrcMessage>
     ): Observable<Pair<BurrowConnection, HaproxyHeaderDecoder.Output>> {
         val hostnameLookup = haproxyFrame
             .observeOn(lookupScheduler)
             .flatMap { hostnameLookupUseCase.lookUp(it.header.sourceAddress, default = it.header.sourceAddress.hostAddress)}
+
+        // todo: give error back from lookUp useCase so we can send client a message when lookup fails
+
+        haproxyFrame
+            .take(1)
+            .map { PlainConnectionPreparing.LOOKING_UP_MESSAGE }
+            .subscribe(send::onNext)
 
         return Observables.combineLatest(haproxyFrame, hostnameLookup) { frame, hostname -> (frame to hostname) }
             .map { (frame, hostname) ->

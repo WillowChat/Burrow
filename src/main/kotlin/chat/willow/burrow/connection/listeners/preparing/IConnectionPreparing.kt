@@ -5,6 +5,7 @@ import chat.willow.burrow.connection.ConnectionId
 import chat.willow.burrow.connection.ConnectionTracker
 import chat.willow.burrow.connection.line.ILineAccumulator
 import chat.willow.burrow.connection.listeners.IConnectionListening
+import chat.willow.kale.core.message.IrcMessage
 import io.reactivex.Observable
 import io.reactivex.Observer
 
@@ -14,7 +15,8 @@ interface IConnectionPreparing {
                 connection: IConnectionListening.Accepted,
                 tracked: Observer<ConnectionTracker.Tracked>,
                 drop: Observer<ConnectionId>,
-                connections: MutableMap<ConnectionId, BurrowConnection>
+                connections: MutableMap<ConnectionId, BurrowConnection>,
+                send: Observer<IrcMessage>
     )
 }
 

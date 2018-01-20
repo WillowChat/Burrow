@@ -8,6 +8,7 @@ import chat.willow.burrow.connection.listeners.IConnectionListening
 import chat.willow.burrow.helper.BurrowSchedulers
 import chat.willow.burrow.helper.loggerFor
 import chat.willow.kale.IKale
+import chat.willow.kale.core.message.IrcMessage
 import chat.willow.kale.irc.message.IrcMessageSerialiser
 import io.reactivex.Observable
 import io.reactivex.Observer
@@ -15,6 +16,7 @@ import io.reactivex.Scheduler
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 import io.reactivex.subjects.ReplaySubject
+import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
 
 interface IConnectionTracker {
@@ -127,7 +129,22 @@ class ConnectionTracker(
             .doOnNext { LOGGER.info("Tracked connection ${it.connection.id}") }
             .subscribe(tracked)
 
-        listener.prepare(reads, accumulator, accepted, prepareTracked, drop, connections)
+        val send = PublishSubject.create<IrcMessage>()
+
+        send.map { accepted.id to it }
+            .observeOn(scheduler)
+            .subscribe {
+                val bytes = IrcMessageSerialiser.serialise(it.second)?.plus("\r\n")?.toByteArray(Burrow.Server.UTF_8)
+                if (bytes == null) {
+                    LOGGER.warn("Tried to send message to ${accepted.id} but it won't serialise: ${it.second}")
+                    return@subscribe
+                }
+
+                LOGGER.info("Sending pre-registration message: $it")
+                accepted.primitiveConnection.write(ByteBuffer.wrap(bytes))
+            }
+
+        listener.prepare(reads, accumulator, accepted, prepareTracked, drop, connections, send)
     }
 
     override fun get(id: ConnectionId): BurrowConnection? {
