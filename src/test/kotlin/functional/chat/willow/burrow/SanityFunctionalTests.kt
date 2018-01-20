@@ -86,7 +86,7 @@ class SanityFunctionalTests {
                 val response = try {
                     socket.input.readLine()
                 } catch (exception: Exception) {
-                    LOGGER.error("Failed to read welcome for connection $it")
+                    Assert.fail("Failed to read welcome for connection $it $exception")
                 }
                 socket.socket.close()
                 assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
@@ -115,7 +115,7 @@ class SanityFunctionalTests {
                 val response = try {
                     socket.input.readLine()
                 } catch (exception: Exception) {
-                    Assert.fail("Failed to read welcome for connection $it")
+                    Assert.fail("Failed to read welcome for connection $it $exception")
                 }
                 socket.socket.close()
                 assertEquals(":🐰 001 someone$it :Welcome to Burrow Tests", response)
