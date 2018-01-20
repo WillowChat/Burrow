@@ -19,15 +19,13 @@ class HostLookupUseCase(val lookupScheduler: Scheduler = Schedulers.io(), val ti
 
     private val HOSTNAME_LOOKUP_TIMEOUT_SECONDS: Long = 10
 
-    object ForwardLookupMistmatch: RuntimeException()
+    object ForwardLookupMismatch: RuntimeException()
 
     override fun lookUp(address: InetAddress, default: String): Observable<String> {
         val hostname = reverseLookupHostname(address)
 
-        val resolvedHostname = hostname
+        val hostnameChecks = hostname
             .doOnError { LOGGER.warn("Hostname reverse lookup failed: $address") }
-
-        val hostnameChecks = resolvedHostname
             .flatMap(
                 { forwardLookupHostnameMatches(it, address) },
                 { it: String, validated: Boolean -> it to validated })
@@ -37,7 +35,7 @@ class HostLookupUseCase(val lookupScheduler: Scheduler = Schedulers.io(), val ti
                     Observable.just(it)
                 } else {
                     LOGGER.warn("Forward lookup mismatch $address ${it.first}")
-                    Observable.error(ForwardLookupMistmatch)
+                    Observable.error(ForwardLookupMismatch)
                 }
             }
 
@@ -57,7 +55,8 @@ class HostLookupUseCase(val lookupScheduler: Scheduler = Schedulers.io(), val ti
 
     private fun forwardLookupHostnameMatches(host: String, original: InetAddress): Observable<Boolean> {
         return Observable.fromCallable {
-            InetAddress.getByName(host).address.contentEquals(original.address)
+            val addresses = InetAddress.getAllByName(host).map { it.address }
+            addresses.any { it.contentEquals(original.address) }
         }
     }
 
