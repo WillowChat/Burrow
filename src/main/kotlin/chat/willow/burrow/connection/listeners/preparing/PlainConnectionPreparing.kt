@@ -43,6 +43,7 @@ class PlainConnectionPreparing(
         send.onNext(LOOKING_UP_MESSAGE)
 
         val hostnameLookup = hostnameLookupUseCase.lookUp(connection.primitiveConnection.address)
+            .observeOn(lookupScheduler)
             .onErrorResumeNext { error: Throwable ->
                 val errorMessage = when (error) {
                     HostLookupUseCase.ForwardLookupNotFound -> "Forward lookup verification failed"
@@ -51,7 +52,6 @@ class PlainConnectionPreparing(
                 send.onNext(PlainConnectionPreparing.LOOK_UP_FAILED_MESSAGE(errorMessage))
                 Observable.just(connection.primitiveConnection.host)
             }
-            .observeOn(lookupScheduler)
             .share()
 
         hostnameLookup

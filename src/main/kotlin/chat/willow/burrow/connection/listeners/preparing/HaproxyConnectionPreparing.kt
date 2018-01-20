@@ -80,6 +80,7 @@ class HaproxyConnectionPreparing(
             .share()
 
         hostnameLookup
+            .take(1)
             .map { PlainConnectionPreparing.LOOK_UP_COMPLETE(it.second) }
             .subscribe(send::onNext)
 
