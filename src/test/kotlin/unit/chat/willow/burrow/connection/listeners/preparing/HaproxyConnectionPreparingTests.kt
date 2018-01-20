@@ -35,11 +35,11 @@ class HaproxyConnectionPreparingTests {
         mockFactory = mock()
         mockDecoder = mock()
         mockHostnameLookup = mock()
-        whenever(mockHostnameLookup.lookUp(any(), any())).thenReturn(Observable.just("somewhere"))
+        whenever(mockHostnameLookup.lookUp(any())).thenReturn(Observable.just("somewhere"))
 
         lookupScheduler = TestScheduler()
 
-        sut = HaproxyConnectionPreparing(mockFactory, mockDecoder, mockHostnameLookup, lookupScheduler)
+        sut = HaproxyConnectionPreparing(mockFactory, mockDecoder, mockHostnameLookup)
     }
 
     @Test fun `if the first input is not decodable, connection is dropped`() {
@@ -75,12 +75,16 @@ class HaproxyConnectionPreparingTests {
         val drop = PublishSubject.create<ConnectionId>().test()
         val connections = mutableMapOf<ConnectionId, BurrowConnection>()
         val send = PublishSubject.create<IrcMessage>().test()
+
         sut.prepare(input, accumulator, connection, tracked, drop, connections, send)
         input.onNext(IConnectionListening.Read(id = 1, bytes = byteArrayOf(0x00)))
+
+        lookupScheduler.triggerActions()
+        Thread.sleep(100) // todo: gross
         lookupScheduler.triggerActions()
 
         drop.assertEmpty()
-        tracked.assertValue(ConnectionTracker.Tracked(burrowConnection))
+        tracked.assertValues(ConnectionTracker.Tracked(burrowConnection))
         accumulatorInput.assertNoValues()
     }
 
@@ -100,11 +104,15 @@ class HaproxyConnectionPreparingTests {
         val drop = PublishSubject.create<ConnectionId>().test()
         val connections = mutableMapOf<ConnectionId, BurrowConnection>()
         val send = PublishSubject.create<IrcMessage>().test()
+
         sut.prepare(input, accumulator, connection, tracked, drop, connections, send)
         input.onNext(IConnectionListening.Read(id = 1, bytes = byteArrayOf(0x00)))
+
+        lookupScheduler.triggerActions()
+        Thread.sleep(100) // todo: gross
         lookupScheduler.triggerActions()
 
-        accumulatorInput.assertValue(ILineAccumulator.Input(bytes = byteArrayOf(0x00, 0x01), bytesRead = 2))
+        accumulatorInput.assertValues(ILineAccumulator.Input(bytes = byteArrayOf(0x00, 0x01), bytesRead = 2))
     }
 
     @Test fun `looking up hostname message is sent after haproxy frame`() {
@@ -124,9 +132,12 @@ class HaproxyConnectionPreparingTests {
         val send = PublishSubject.create<IrcMessage>().test()
         sut.prepare(input, accumulator, connection, tracked, drop, connections, send)
         input.onNext(IConnectionListening.Read(id = 1, bytes = byteArrayOf(0x00)))
+
+        lookupScheduler.triggerActions()
+        Thread.sleep(100) // todo: gross
         lookupScheduler.triggerActions()
 
-        send.assertValue(PlainConnectionPreparing.LOOKING_UP_MESSAGE)
+        send.assertValues(PlainConnectionPreparing.LOOKING_UP_MESSAGE, PlainConnectionPreparing.LOOK_UP_COMPLETE("somewhere"))
     }
 
 }

@@ -40,7 +40,7 @@ class HaproxyHeaderDecoder : IHaproxyHeaderDecoder {
         }
 
         val buffer = ByteBuffer.wrap(bytes)
-        buffer.position(12)
+        buffer.position(HAPROXY_V2_PREFIX.size)
 
         val proxyProtocolAndCommand = buffer.get()
         val proxyProtocol = highestFourBits(proxyProtocolAndCommand)
@@ -134,7 +134,7 @@ class HaproxyHeaderDecoder : IHaproxyHeaderDecoder {
 
     private fun readRemainingPayloadLength(buffer: ByteBuffer): Int? {
         val remaining = buffer.remaining()
-        if (remaining < 16) {
+        if (remaining < 14) {
             return null
         }
 

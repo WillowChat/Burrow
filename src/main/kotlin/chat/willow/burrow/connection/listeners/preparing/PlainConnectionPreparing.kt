@@ -42,9 +42,24 @@ class PlainConnectionPreparing(
 
         send.onNext(LOOKING_UP_MESSAGE)
 
-        hostnameLookupUseCase.lookUp(connection.primitiveConnection.address, connection.primitiveConnection.host)
+        val hostnameLookup = hostnameLookupUseCase.lookUp(connection.primitiveConnection.address)
+            .onErrorResumeNext { error: Throwable ->
+                val errorMessage = when (error) {
+                    HostLookupUseCase.ForwardLookupNotFound -> "Forward lookup verification failed"
+                    else -> "Unknown exception: ${error::class}"
+                }
+                send.onNext(PlainConnectionPreparing.LOOK_UP_FAILED_MESSAGE(errorMessage))
+                Observable.just(connection.primitiveConnection.host)
+            }
             .observeOn(lookupScheduler)
-            .map {
+            .share()
+
+        hostnameLookup
+            .take(1)
+            .map { PlainConnectionPreparing.LOOK_UP_COMPLETE(it) }
+            .subscribe(send::onNext)
+
+        hostnameLookup.map {
                 val primitiveConnection = connection.primitiveConnection
                 val burrowConnection = factory.create(connection.id, primitiveConnection)
 
@@ -57,5 +72,7 @@ class PlainConnectionPreparing(
 
     companion object {
         val LOOKING_UP_MESSAGE = IrcMessage(prefix = "bunnies", command = "NOTICE", parameters = listOf("*", "Looking up your hostname before registration"))
+        fun LOOK_UP_FAILED_MESSAGE(why: String) = IrcMessage(prefix = "bunnies", command = "NOTICE", parameters = listOf("*", "Hostname lookup failed: $why"))
+        fun LOOK_UP_COMPLETE(hostname: String) = IrcMessage(prefix = "bunnies", command = "NOTICE", parameters = listOf("*", "Your hostname is: $hostname"))
     }
 }

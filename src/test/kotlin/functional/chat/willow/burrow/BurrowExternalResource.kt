@@ -2,6 +2,8 @@ package functional.chat.willow.burrow
 
 import chat.willow.burrow.Burrow
 import chat.willow.burrow.connection.network.HaproxyHeaderDecoder
+import chat.willow.burrow.connection.network.HaproxyHeaderDecoder.Companion.HAPROXY_V2_PREFIX
+import chat.willow.burrow.helper.loggerFor
 import org.junit.rules.ExternalResource
 import java.io.*
 import java.net.Socket
@@ -12,6 +14,8 @@ class BurrowExternalResource: ExternalResource() {
 
     lateinit var burrow: Burrow
     lateinit var burrowThread: Thread
+
+    private val LOGGER = loggerFor<BurrowExternalResource>()
 
     override fun before() {
         super.before()
@@ -33,9 +37,22 @@ class BurrowExternalResource: ExternalResource() {
         super.after()
     }
 
-    data class BurrowTestSocket(val socket: Socket, val output: PrintWriter, val input: BufferedReader, val rawOut: OutputStream)
+    data class BurrowTestSocket(val socket: Socket, val output: PrintWriter, val input: BufferedReader, val rawOut: OutputStream) {
+        private val LOGGER = loggerFor<BurrowExternalResource>()
 
-    fun socket(host: String = "127.0.0.1", port: Int = 6770, removeFirstLine: Boolean = true): BurrowTestSocket {
+        private fun ignoreNext(next: Int) {
+            (0 until next).forEach {
+                val line = input.readLine() ?: throw RuntimeException("Null line read")
+                LOGGER.debug("Ignored line $line")
+            }
+        }
+
+        fun ignorePreregistration() {
+            ignoreNext(2)
+        }
+    }
+
+    fun socket(host: String = "127.0.0.1", port: Int = 6770, ignorePreregistration: Boolean = true): BurrowTestSocket {
         var socket: Socket? = null
         retry@for (i in 0..30) {
             try {
@@ -56,19 +73,23 @@ class BurrowExternalResource: ExternalResource() {
         val socketOut = PrintWriter(socket.getOutputStream(), true)
         val socketIn = BufferedReader(InputStreamReader(socket.getInputStream()))
 
-        if (removeFirstLine) {
-            socketIn.readLine()
+        val returnSocket = BurrowTestSocket(socket, socketOut, socketIn, rawOut)
+
+        if (ignorePreregistration) {
+            returnSocket.ignorePreregistration()
         }
 
-        return BurrowTestSocket(socket, socketOut, socketIn, rawOut)
+        return returnSocket
     }
 
     fun haproxySocket(content: ByteArray = byteArrayOf()): BurrowTestSocket {
-        val socket = socket(port = 6771, removeFirstLine = false)
+        val socket = socket(port = 6771, ignorePreregistration = false)
 
         val inet4Length = 4 + 4 + 2 + 2
-        val buffer = ByteBuffer.allocate(16 + inet4Length + content.size)
-        buffer.put(HaproxyHeaderDecoder.HAPROXY_V2_PREFIX)
+        val prefixLength = HAPROXY_V2_PREFIX.size + 1 + 1 + 2
+        val bufferLength = prefixLength + inet4Length + content.size
+        val buffer = ByteBuffer.allocate(bufferLength)
+        buffer.put(HAPROXY_V2_PREFIX)
         buffer.put(0x21) // protocol version 2 + nonlocal command
         buffer.put(0x11) // inet4 stream
         buffer.putShort(inet4Length.toShort())
@@ -78,8 +99,10 @@ class BurrowExternalResource: ExternalResource() {
             buffer.put(content)
         }
 
-        socket.rawOut.write(buffer.array())
+        socket.rawOut.write(buffer.array(), 0, bufferLength)
         socket.rawOut.flush()
+
+        socket.ignorePreregistration()
 
         return socket
     }

@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit
 
 interface IHostLookupUseCase {
 
-    fun lookUp(address: InetAddress, default: String): Observable<String>
+    fun lookUp(address: InetAddress): Observable<String>
 
 }
 
@@ -19,9 +19,9 @@ class HostLookupUseCase(val lookupScheduler: Scheduler = Schedulers.io(), val ti
 
     private val HOSTNAME_LOOKUP_TIMEOUT_SECONDS: Long = 10
 
-    object ForwardLookupMismatch: RuntimeException()
+    object ForwardLookupNotFound: RuntimeException()
 
-    override fun lookUp(address: InetAddress, default: String): Observable<String> {
+    override fun lookUp(address: InetAddress): Observable<String> {
         val hostname = reverseLookupHostname(address)
 
         val hostnameChecks = hostname
@@ -35,7 +35,7 @@ class HostLookupUseCase(val lookupScheduler: Scheduler = Schedulers.io(), val ti
                     Observable.just(it)
                 } else {
                     LOGGER.warn("Forward lookup mismatch $address ${it.first}")
-                    Observable.error(ForwardLookupMismatch)
+                    Observable.error(ForwardLookupNotFound)
                 }
             }
 
@@ -43,7 +43,6 @@ class HostLookupUseCase(val lookupScheduler: Scheduler = Schedulers.io(), val ti
             .subscribeOn(lookupScheduler)
             .map { it.first }
             .timeout(HOSTNAME_LOOKUP_TIMEOUT_SECONDS, TimeUnit.SECONDS, timerScheduler)
-            .onErrorReturnItem(default)
     }
 
     private fun reverseLookupHostname(address: InetAddress): Observable<String> {

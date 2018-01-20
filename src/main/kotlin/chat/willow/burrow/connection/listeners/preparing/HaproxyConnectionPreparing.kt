@@ -59,18 +59,31 @@ class HaproxyConnectionPreparing(
         connection: IConnectionListening.Accepted,
         send: Observer<IrcMessage>
     ): Observable<Pair<BurrowConnection, HaproxyHeaderDecoder.Output>> {
-        val hostnameLookup = haproxyFrame
-            .observeOn(lookupScheduler)
-            .flatMap { hostnameLookupUseCase.lookUp(it.header.sourceAddress, default = it.header.sourceAddress.hostAddress)}
-
-        // todo: give error back from lookUp useCase so we can send client a message when lookup fails
-
         haproxyFrame
             .take(1)
             .map { PlainConnectionPreparing.LOOKING_UP_MESSAGE }
             .subscribe(send::onNext)
 
-        return Observables.combineLatest(haproxyFrame, hostnameLookup) { frame, hostname -> (frame to hostname) }
+        val hostnameLookup = haproxyFrame
+            .observeOn(lookupScheduler)
+            .flatMap({
+                hostnameLookupUseCase.lookUp(it.header.sourceAddress)
+                    .onErrorResumeNext { error: Throwable ->
+                        val errorMessage = when (error) {
+                            HostLookupUseCase.ForwardLookupNotFound -> "Forward lookup verification failed"
+                            else -> "Unknown exception: ${error::class}"
+                        }
+                        send.onNext(PlainConnectionPreparing.LOOK_UP_FAILED_MESSAGE(errorMessage))
+                        Observable.just(it.header.sourceAddress.hostAddress)
+                    }
+            }, { frame, lookup -> frame to lookup })
+            .share()
+
+        hostnameLookup
+            .map { PlainConnectionPreparing.LOOK_UP_COMPLETE(it.second) }
+            .subscribe(send::onNext)
+
+        return hostnameLookup
             .map { (frame, hostname) ->
                 val primitiveConnection = connection.primitiveConnection
                 primitiveConnection.host = hostname

@@ -133,6 +133,7 @@ class ConnectionTracker(
 
         send.map { accepted.id to it }
             .observeOn(scheduler)
+            // todo: refactor this out to a shared function?
             .subscribe {
                 val bytes = IrcMessageSerialiser.serialise(it.second)?.plus("\r\n")?.toByteArray(Burrow.Server.UTF_8)
                 if (bytes == null) {
