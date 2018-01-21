@@ -42,8 +42,9 @@ class PlainConnectionPreparing(
 
         send.onNext(LOOKING_UP_MESSAGE)
 
-        val hostnameLookup = hostnameLookupUseCase.lookUp(connection.primitiveConnection.address)
+        val hostnameLookup = Observable.just(connection.primitiveConnection.address)
             .observeOn(lookupScheduler)
+            .flatMap(hostnameLookupUseCase::lookUp)
             .onErrorResumeNext { error: Throwable ->
                 val errorMessage = when (error) {
                     HostLookupUseCase.ForwardLookupNotFound -> "Forward lookup verification failed"
@@ -56,11 +57,6 @@ class PlainConnectionPreparing(
 
         hostnameLookup
             .take(1)
-            .map { PlainConnectionPreparing.LOOK_UP_COMPLETE(it) }
-            .subscribe(send::onNext)
-
-        hostnameLookup
-            .take(1)
             .map {
                 val primitiveConnection = connection.primitiveConnection
                 val burrowConnection = factory.create(connection.id, primitiveConnection)
@@ -70,6 +66,11 @@ class PlainConnectionPreparing(
                 ConnectionTracker.Tracked(burrowConnection)
             }
             .subscribe(tracked::onNext)
+
+        hostnameLookup
+            .take(1)
+            .map { PlainConnectionPreparing.LOOK_UP_COMPLETE(it) }
+            .subscribe(send::onNext)
     }
 
     companion object {
